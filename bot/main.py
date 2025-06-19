@@ -12,12 +12,18 @@ async def start_handler(msg: types.Message):
         parse_mode=ParseMode.HTML,
     )
 
+async def help_handler(msg: types.Message):
+    await msg.answer(
+        "Доступные команды:\n/start — запуск бота\n/help — это сообщение помощи"
+    )
+
 def create_bot_and_dispatcher():          # удобно реиспользовать в тестах
     #bot = Bot(token=BOT_TOKEN)
     token = os.getenv("BOT_TOKEN")
     bot = Bot(token=token)
     dp = Dispatcher()
     dp.message(Command("start"))(start_handler)
+    dp.message(Command("help"))(help_handler)
     return bot, dp
 
 async def main():
