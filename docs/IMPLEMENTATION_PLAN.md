@@ -1,7 +1,5 @@
 ### Итерация 0 — Project Bootstrap & CI Skeleton
 
-*(подробный чек-лист для Codex; реальный код писать не нужно, здесь только шаги)*
-
 > **Контекст репозитория:**
 >
 > * Уже есть минимальный бот (`bot/main.py`) с `/start`-хендлером и фабрикой `create_bot_and_dispatcher` .
@@ -84,5 +82,3 @@
 | pre-commit + линтеры  | настроены              |
 | CI (`ci.yml`)         | lint + tests + docker  |
 | Dockerfile (базовый)  | собирается без ошибок  |
-
-Теперь репозиторий полностью соответствует целям Bootstrap-итерации и готов к переходу к Iteration 1 («Database Schema with aiosqlite»).
