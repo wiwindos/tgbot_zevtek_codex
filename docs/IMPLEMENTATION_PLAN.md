@@ -43,7 +43,6 @@
 4. **Зависимости**:
 
    * В `requirements.txt` указать ещё `python-dotenv`, `black`, `isort`, `flake8`, `mypy`, `pre-commit` (если их нет).
-   * Codex может воспользоваться опцией `# TODO: requirements upgrade` в pull-request, чтобы добавить пакет-группу *\[dev]* вместо фиксированных версий.
 5. После реализации — убедиться, что новый смоук-тест и старый тест `/start` оба проходят (`pytest -q`).
 
 ---
