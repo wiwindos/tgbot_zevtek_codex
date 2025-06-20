@@ -19,10 +19,10 @@
 
 | Модуль       | Описание                        | Файлы и папки                                                    |
 | ------------ | ------------------------------- | ---------------------------------------------------------------- |
-| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `create_bot_and_dispatcher`, `main`) |
+| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`) |
 | **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `CREATE_USERS`)                        |
-| **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`                       |
-| **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`)                                  |
+| **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
+| **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
 | **deps**     | Зависимости проекта             | `requirements.txt`                                               |
 

@@ -1,15 +1,19 @@
 # tests/test_help.py
 
 import asyncio
-import pytest
 from datetime import datetime
+
+import pytest
 from aiogram import types
 from aiogram.types import Update
+
 from bot.main import create_bot_and_dispatcher
+
 
 @pytest.fixture(autouse=True)
 def fake_token_env(monkeypatch):
     monkeypatch.setenv("BOT_TOKEN", "123456:FAKE_TOKEN")
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -17,11 +21,13 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture()
 def bot_and_dp(monkeypatch):
     bot, dp = create_bot_and_dispatcher()
 
     send_calls = []
+
     async def fake_answer(self, text, **kwargs):
         send_calls.append((self.chat.id, text))
         return types.Message(
@@ -35,6 +41,7 @@ def bot_and_dp(monkeypatch):
     monkeypatch.setattr(types.Message, "answer", fake_answer)
 
     return bot, dp, send_calls
+
 
 @pytest.mark.asyncio
 async def test_help_command(bot_and_dp):

@@ -1,5 +1,4 @@
-# tests/test_start.py
-
+# tests/test_smoke.py
 import asyncio
 from datetime import datetime
 
@@ -12,7 +11,6 @@ from bot.main import create_bot_and_dispatcher
 
 @pytest.fixture(autouse=True)
 def fake_token_env(monkeypatch):
-    # Валидный (но тестовый) токен
     monkeypatch.setenv("BOT_TOKEN", "123456:FAKE_TOKEN")
 
 
@@ -27,13 +25,10 @@ def event_loop():
 def bot_and_dp(monkeypatch):
     bot, dp = create_bot_and_dispatcher()
 
-    # Перехватываем msg.answer вместо HTTP-запроса
     send_calls = []
 
     async def fake_answer(self, text, **kwargs):
-        # self — это Message, у него .chat.id есть
         send_calls.append((self.chat.id, text))
-        # возвращаем любой Message, у нас он не используется дальше
         return types.Message(
             message_id=0,
             date=datetime.now(),
@@ -42,33 +37,28 @@ def bot_and_dp(monkeypatch):
             text=text,
         )
 
-    # Перехватываем вызовы Message.answer
     monkeypatch.setattr(types.Message, "answer", fake_answer)
 
     return bot, dp, send_calls
 
 
 @pytest.mark.asyncio
-async def test_start_command(bot_and_dp):
+async def test_ping_command(bot_and_dp):
     bot, dp, send_calls = bot_and_dp
 
-    # Синтезируем /start
     msg = types.Message(
         message_id=1,
         date=datetime.now(),
         chat=types.Chat(id=12345, type="private"),
         from_user=types.User(id=12345, is_bot=False, first_name="Tester"),
-        text="/start",
+        text="/ping",
     )
 
-    # Оборачиваем в Update
     update = Update(update_id=1, message=msg)
 
-    # Прокидываем в диспетчер
     await dp.feed_update(bot, update)
 
-    # Проверяем, что fake_answer был вызван один раз
     assert len(send_calls) == 1
     chat_id, text = send_calls[0]
     assert chat_id == 12345
-    assert "минимальный асинхронный бот" in text.lower()
+    assert text == "Bot ready"
