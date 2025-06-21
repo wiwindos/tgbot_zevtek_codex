@@ -1,4 +1,6 @@
-import aiosqlite, pathlib
+import pathlib
+
+import aiosqlite
 
 DB_PATH = pathlib.Path("bot.db")
 
@@ -9,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users(
     name   TEXT
 );
 """
+
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
