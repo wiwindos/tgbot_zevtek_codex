@@ -11,6 +11,8 @@ jobs:
           python-version: '3.12'
       - name: Install deps
         run: pip install -r requirements.txt pre-commit
+      - name: DB tests
+        run: pytest -q tests/db
       - name: Lint
         run: pre-commit run --all-files
       - name: Test
