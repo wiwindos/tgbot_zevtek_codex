@@ -1,84 +1,91 @@
-### Итерация 0 — Project Bootstrap & CI Skeleton
+### Итерация 1 — Database Schema with **aiosqlite**
 
-> **Контекст репозитория:**
+> **Текущее состояние репо**
 >
-> * Уже есть минимальный бот (`bot/main.py`) с `/start`-хендлером и фабрикой `create_bot_and_dispatcher` .
-> * Существуют юнит-тесты для `/start` (`tests/test_start.py`) .
-> * Есть рабочий CI workflow (`ci.yml`) со сборкой тестов, но без линтинга и docker-dry-run .
-> * Requirements уже заведён .
+> * В `database.py` уже есть `init_db()` и одна таблица `users` (только id, tg\_id, name) .
+> * В зависимостях уже присутствует **aiosqlite** .
+> * Тестов и вспомогательных функций для работы с БД пока нет.
 
-Ниже — шаги, которые ещё предстоит выполнить, чтобы достроить полный «Iteration 0».
+Наша цель — полноценная схема (`users`, `requests`, `responses`, `models`) + базовый слой доступа и покрытие юнит-тестами.
 
 ---
 
-#### 1. **T — Test First**
+#### 1. **T — Test first**
 
-1. **Создать новый смоук-тест** `tests/test_smoke.py` (парадигма «красный-зелёный»):
+1. **Создать каталог `tests/db/`** и файл `test_schema.py`.
+2. В тесте:
 
-   * Проверяет, что команда `/ping` возвращает ровно строку **«Bot ready»**.
-   * Использовать тот же приём мокирования `Message.answer`, что уже реализован в `tests/test_start.py`, чтобы не делать реальный HTTP-вызов.
-   * Запуск `pytest` сейчас должен упасть, потому что `/ping` ещё нет.
+   * C помощью `tempfile.TemporaryDirectory()` подменить `DB_PATH` на временный файл (через `monkeypatch`).
+   * Вызвать `await init_db()` — ожидание, что все 4 таблицы существуют:
+
+     ```sql
+     PRAGMA table_info(users);
+     PRAGMA foreign_key_list(responses);
+     ```
+   * Проверить ключевые колонки (`user_id`, `request_id`, `provider`, `updated_at`) и внешние ключи:
+
+     * `requests.user_id → users.id`
+     * `responses.request_id → requests.id`
+   * Попробовать вставить демо-данные и убедиться, что каскадные ограничения работают (например, попытка ответа на несуществующий `request_id` должна падать).
+3. Запустить `pytest -q` — тест, конечно, упадёт (таблиц нет).
 
 ---
 
 #### 2. **F — Feature**
 
-1. **Добавить новый хендлер `/ping`** в существующий `bot/main.py`:
+1. **Расширить `database.py`**:
 
-   * Ответ «Bot ready» (одной строкой, без эмодзи — это важно для теста).
-   * Можно подключить к уже созданному `Dispatcher`, не меняя `/start`.
-2. **CLI-режим "здоровье"**:
+   * Добавить SQL-константы `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`.
+   * В `init_db()` выполнить их в транзакции.
+   * Включить `PRAGMA foreign_keys=ON` сразу после подключения.
+2. **Асинхронный слой доступа** (минимально):
 
-   * Дописать в `bot/main.py` (или отдельном `cli.py`) поддержку флага `--ping`.
-   * При вызове `python -m bot.main --ping` скрипт должен:
-
-     * инициализировать переменные окружения (через `python-dotenv`),
-     * вывести «pong» в stdout,
-     * завершиться с кодом 0.
-3. **`.env.example`**:
-
-   * Создать файл-шаблон с ключом `BOT_TOKEN=` и краткой инструкцией «скопируйте в .env».
-4. **Зависимости**:
-
-   * В `requirements.txt` указать ещё `python-dotenv`, `black`, `isort`, `flake8`, `mypy`, `pre-commit` (если их нет).
-5. После реализации — убедиться, что новый смоук-тест и старый тест `/start` оба проходят (`pytest -q`).
+   * `async def get_db()` — контекст-менеджер, возвращающий соединение.
+   * `async def log_request(user_id, prompt, model)` → возвращает `request_id`.
+   * `async def log_response(request_id, content)`.
+   * Эти функции пока не используются ботом, но нужны для следующих итераций и тестов.
+3. (Не писать сейчас) добавить место-заглушку под «миграции» (будущее расширение).
+4. Прогнать `pytest` — должно стать зелёным.
 
 ---
 
 #### 3. **I — Integrate**
 
-1. **pre-commit**:
+1. **Документация схемы**:
 
-   * Сгенерировать `.pre-commit-config.yaml` с хуками **black**, **isort**, **flake8**, **mypy**.
-   * Добавить команду установки в `README` (или Makefile).
-2. **Расширить GitHub Actions** (`ci.yml`):
+   * В начале `database.py` поместить ASCII-ERD или markdown-блок с описанием таблиц/связей.
+   * Обновить `README` раздел «Database» (как инициализируется, где лежит файл, как включить PRAGMA foreign\_keys).
+2. **pre-commit**:
 
-   * **Lint**-джоб: `pre-commit run --all-files`.
-   * **Docker dry-run**: сборка образа `docker build -t bot:test .` (без пуша).
-   * Упорядочить шаги: `checkout → setup-python → pip install → lint → tests → docker build`.
-3. **Миграция существующего workflow**: убедиться, что новые шаги не ломают старый тестовый пайплайн.
+   * Добавить `sqlfmt` (или `pg_format` Wrapper) в `.pre-commit-config.yaml` для автоформатирования \*.sql блоков в исходниках (необязательно, но полезно).
+3. **CI (`ci.yml`)**:
+
+   * В блоке `jobs.test.steps` после установки зависимостей добавить `pytest -q tests/db`.
+   * Убедиться, что логи CI не публикуют чувствительных данных (.env у нас тестовый).
 
 ---
 
 #### 4. **P — Push**
 
-1. Создать коммит c сообщением по Conventional Commits:
+1. Коммит:
 
    ```
-   feat(core): bootstrap ping command and CI linters
+   feat(db): introduce full sqlite schema and tests
    ```
-2. Открыть pull-request; убедиться, что CI зелёный (lint+tests+docker-dry-run).
-3. Мерж в `main`.
+2. Pull-request → убедиться, что:
+
+   * **Lint** зелёный,
+   * **Tests** зелёные,
+   * **Docker dry-run** всё ещё собирается.
 
 ---
 
-#### Итог, который должен получить следующий этап:
+#### Результат итерации
 
-| Артефакт              | Состояние после Iter 0 |
-| --------------------- | ---------------------- |
-| `/ping` командa       | отвечает «Bot ready»   |
-| `tests/test_smoke.py` | зелёный                |
-| `.env.example`        | создан                 |
-| pre-commit + линтеры  | настроены              |
-| CI (`ci.yml`)         | lint + tests + docker  |
-| Dockerfile (базовый)  | собирается без ошибок  |
+| Компонент                                       | Состояние после Iter 1                  |
+| ----------------------------------------------- | --------------------------------------- |
+| Таблицы `users / requests / responses / models` | созданы & проверены                     |
+| `init_db()`                                     | включает все DDL + PRAGMA FK            |
+| Асинхр. helper-методы                           | `get_db`, `log_request`, `log_response` |
+| Юнит-тесты                                      | `tests/db/test_schema.py` зелёные       |
+| CI                                              | тестирует схему                         |
