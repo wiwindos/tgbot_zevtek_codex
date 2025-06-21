@@ -13,14 +13,40 @@
   * `name: TEXT` — имя или никнейм пользователя
 * Хранится в таблице `users` (создаётся в `database.py`).
 
-> Пока единственная модель данных: добавляйте новые поля к User через миграции в `database.py`.
+### Request
+
+* Поля:
+  * `id: INTEGER PRIMARY KEY`
+  * `user_id: INTEGER` — FK на `users.id`
+  * `prompt: TEXT` — текст запроса
+  * `model: TEXT` — название модели
+  * `created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+* Таблица `requests`.
+
+### Response
+
+* Поля:
+  * `id: INTEGER PRIMARY KEY`
+  * `request_id: INTEGER` — FK на `requests.id`
+  * `content: TEXT`
+  * `created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+* Таблица `responses`.
+
+### Model
+
+* Поля:
+  * `id: INTEGER PRIMARY KEY`
+  * `provider: TEXT`
+  * `name: TEXT`
+  * `updated_at: TIMESTAMP`
+* Таблица `models`.
 
 ## 2. Структура модулей
 
 | Модуль       | Описание                        | Файлы и папки                                                    |
 | ------------ | ------------------------------- | ---------------------------------------------------------------- |
 | **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`) |
-| **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `CREATE_USERS`)                        |
+| **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`) |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
