@@ -47,9 +47,9 @@
 
 | Модуль       | Описание                        | Файлы и папки                                                    |
 | ------------ | ------------------------------- | ---------------------------------------------------------------- |
-| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`) |
+| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`), `conversation.py`, `utils.py` |
 | **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`) |
-| **services** | Бизнес-логика пользователей     | `services/user_service.py`, `AuthMiddleware`, `admin_router` |
+| **services** | Бизнес-логика пользователей     | `services/user_service.py`, `AuthMiddleware`, `ContextBuffer`, `admin_router` |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
@@ -61,5 +61,7 @@
 * **Добавить новые поля в User:** редактируйте `CREATE TABLE users` в `database.py` и обновляйте `init_db()`.
 * **Тесты на новые функции бота:** добавляйте файлы в папку `tests/`, используйте `pytest` и мок `BOT_TOKEN` через `conftest.py`.
 * **CI-пайплайн:** для проверки lint, тестов и автодеплоя смотрите `.github/workflows/ci.yml`.
+
+* **Контекст переписки:** `ContextBuffer` сохраняет последние сообщения чата; очистить историю можно командой `/clear`.
 
 > **Важно:** актуализируйте этот файл при расширении модели данных или изменении структуры проекта.
