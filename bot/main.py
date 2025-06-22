@@ -8,6 +8,9 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from dotenv import load_dotenv
 
+from bot.admin import get_admin_router
+from bot.middleware import AuthMiddleware
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
@@ -34,10 +37,12 @@ async def ping_handler(msg: types.Message):
 
 
 def create_bot_and_dispatcher():  # удобно реиспользовать в тестах
-    # bot = Bot(token=BOT_TOKEN)
     token = os.getenv("BOT_TOKEN")
+    admin_id = int(os.getenv("ADMIN_CHAT_ID", "0"))
     bot = Bot(token=token)
     dp = Dispatcher()
+    dp.message.middleware(AuthMiddleware(admin_id))
+    dp.include_router(get_admin_router(admin_id))
     dp.message(Command("start"))(start_handler)
     dp.message(Command("help"))(help_handler)
     dp.message(Command("ping"))(ping_handler)

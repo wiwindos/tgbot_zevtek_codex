@@ -15,3 +15,6 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
+      - id: mypy
+        name: mypy services
+        files: ^services/

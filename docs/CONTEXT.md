@@ -11,6 +11,8 @@
   * `id: INTEGER PRIMARY KEY` — уникальный идентификатор записи
   * `tg_id: INTEGER UNIQUE` — Telegram ID пользователя
   * `name: TEXT` — имя или никнейм пользователя
+  * `is_active: INTEGER` — доступ к боту (0/1)
+  * `requested_at: TIMESTAMP` — когда отправлена заявка
 * Хранится в таблице `users` (создаётся в `database.py`).
 
 ### Request
@@ -47,6 +49,7 @@
 | ------------ | ------------------------------- | ---------------------------------------------------------------- |
 | **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`) |
 | **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`) |
+| **services** | Бизнес-логика пользователей     | `services/user_service.py`, `AuthMiddleware`, `admin_router` |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
