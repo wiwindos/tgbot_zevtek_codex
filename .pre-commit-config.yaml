@@ -18,3 +18,6 @@ repos:
       - id: mypy
         name: mypy services
         files: ^services/
+      - id: mypy
+        name: mypy providers
+        files: ^providers/

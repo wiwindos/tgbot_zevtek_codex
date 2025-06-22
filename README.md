@@ -33,3 +33,11 @@ When a new user sends `/start`, the bot records the request and notifies the cha
 ## Context management & limits
 
 Messages for each chat are stored in an in-memory buffer. The number of stored pairs is controlled by `MAX_CONTEXT_MESSAGES` (default 20). Command `/clear` wipes the history for the chat. Answers longer than 4096 characters are automatically split before sending.
+
+## Supported LLM providers
+
+| name    | supports_files | env vars                             |
+|---------|---------------|--------------------------------------|
+| gemini  | false         | `GEMINI_PROJECT`, `GEMINI_LOCATION`, `GEMINI_KEY` |
+| mistral | false         | `MISTRAL_API_KEY`                    |
+| dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |

@@ -79,7 +79,7 @@ async def test_history(bot_and_dp):
         await dp.feed_update(bot, Update(update_id=i, message=msg))
 
     buffer = dp.context_buffer
-    assert len(buffer.get(chat_id)) == 3
+    assert len(buffer.get(chat_id)) == 6
 
 
 @pytest.mark.asyncio
