@@ -54,3 +54,16 @@ The bot uses APScheduler to update the `models` table on a schedule defined by
 `REFRESH_CRON` (default `0 0 * * *`). New models detected across providers are
 reported to the chat specified in `ADMIN_CHAT_ID`. Set `ENABLE_SCHEDULER=0` to
 disable the job.
+
+## Admin commands
+
+The chat defined in `ADMIN_CHAT_ID` gains extra commands:
+
+```
+/admin stats            - show user and request counts
+/admin users pending    - list pending approvals
+/admin disable <id>     - revoke access for a user
+/admin enable <id>      - re-enable user access
+/admin models           - list stored models
+/admin refresh models   - pull latest models from providers
+```

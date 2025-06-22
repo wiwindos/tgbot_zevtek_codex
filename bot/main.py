@@ -33,9 +33,22 @@ HELP_TEXT = """\
 /help — это сообщение помощи
 """
 
+ADMIN_HELP = """\
+/admin stats — статистика
+/admin users pending — список заявок
+/admin disable <id> — закрыть доступ
+/admin enable <id> — вернуть доступ
+/admin models — список моделей
+/admin refresh models — обновить модели
+"""
+
 
 async def help_handler(msg: types.Message):
-    await send_long_message(msg.bot, msg.chat.id, HELP_TEXT)
+    text = HELP_TEXT
+    admin_id = int(os.getenv("ADMIN_CHAT_ID", "0"))
+    if msg.from_user.id == admin_id:
+        text += "\n" + ADMIN_HELP
+    await send_long_message(msg.bot, msg.chat.id, text)
 
 
 async def ping_handler(msg: types.Message):

@@ -27,3 +27,6 @@ repos:
       - id: mypy
         name: mypy bot handlers
         files: ^bot/file_handlers.py$
+      - id: mypy
+        name: mypy admin
+        files: ^bot/admin.py$
