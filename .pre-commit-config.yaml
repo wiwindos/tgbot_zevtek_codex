@@ -21,3 +21,6 @@ repos:
       - id: mypy
         name: mypy providers
         files: ^providers/
+      - id: mypy
+        name: mypy scheduler
+        files: ^scheduler/

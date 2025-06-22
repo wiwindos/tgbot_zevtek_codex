@@ -41,3 +41,10 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 | gemini  | false         | `GEMINI_PROJECT`, `GEMINI_LOCATION`, `GEMINI_KEY` |
 | mistral | false         | `MISTRAL_API_KEY`                    |
 | dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |
+
+## Model auto-refresh
+
+The bot uses APScheduler to update the `models` table on a schedule defined by
+`REFRESH_CRON` (default `0 0 * * *`). New models detected across providers are
+reported to the chat specified in `ADMIN_CHAT_ID`. Set `ENABLE_SCHEDULER=0` to
+disable the job.
