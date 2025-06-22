@@ -1,65 +1,78 @@
-### Итерация 3 — **Context Buffer & Message Splitting**
+### Итерация 4 — **LLM Provider Abstraction (Gemini · Mistral · Dipseek)**
 
-
----
-
-#### 1. T — **Test first**
-
-| Действие                      | Детали                                                                                                                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Файл**                      | `tests/test_context.py`                                                                                                                                                |
-| **Фикстуры**                  | Скопируйте стиль `tests/test_start.py`: мокируйте `Message.answer` через `monkeypatch`, импортируйте фабрику как:<br>`from bot.main import create_bot_and_dispatcher`. |
-| **Сценарий 1 «history»**      | Отправьте три текста (`one`, `two`, `three`) → убедитесь, что внутренняя очередь истории для чата содержит 3 пар (role, text).                                         |
-| **Сценарий 2 «/clear»**       | Отправьте `/clear` → проверка, что очередь очищена (длина 0).                                                                                                          |
-| **Сценарий 3 «split > 4096»** | Смоделируйте ответ в 6000 симв. (строка `"x"*6000`); мок проверяет, что `answer` вызван 2 раза, а суммарный текст совпадает с исходным.                                |
-| **Ожидание**                  | Все тесты падают — функциональность не реализована.                                                                                                                    |
+*(T-F-I-P план, привязан к актуальному репо `wiwindos/tgbot_zevtek_codex`)*
 
 ---
 
-#### 2. F — **Feature**
+#### Текущее состояние репозитория (ветка `master`)
 
-| №   | Шаг                   | Расположение / имя                                                                                                                                                                                                                          |
-| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2.1 | **Контекст-буфер**    | `services/context.py`<br>`python<br>class ContextBuffer:<br>    def __init__(..., max_messages=20): ...<br>`                                                                                                                                |
-| 2.2 | **Middleware**        | `bot/context_middleware.py` (или внутри `middleware.py`)<br>*Ставит в цепочку после `AuthMiddleware`;* записывает входящие и исходящие сообщения через буфер.                                                                               |
-| 2.3 | **Утилита дробления** | `bot/utils.py` → `async def send_long_message(bot, chat_id, text)` с использованием `textwrap.wrap(..., width=4096)`.                                                                                                                       |
-| 2.4 | **Команда `/clear`**  | Новый роутер `bot/conversation.py` (или расширяем существующий):<br>`python<br>@router.message(Command(commands=['clear']))<br>async def clear_ctx(...):<br>    buffer.clear(chat_id)<br>    await message.answer('Контекст очищен ✅')<br>` |
-| 2.5 | **Интеграция**        | В `create_bot_and_dispatcher()`:<br>`python<br>dp.message.middleware(ContextMiddleware(buffer))<br>dp.include_router(conversation_router)<br>`                                                                                              |
-| 2.6 | **Замена ответов**    | В `/start`, `/ping` и будущих хендлерах — вместо `message.answer()` вызвать `send_long_message(...)`.                                                                                                                                       |
-| 2.7 | **Конфиг**            | В `.env.example` добавить `MAX_CONTEXT_MESSAGES=20`; считывать через `int(os.getenv(...))`.                                                                                                                                                 |
-
----
-
-#### 3. I — **Integrate**
-
-| Задача         | Детали                                                                              |
-| -------------- | ----------------------------------------------------------------------------------- |
-| **Док-строки** | Подробное описание буфера и алгоритма дробления в `services/context.py`.            |
-| **README**     | Раздел “Context management & limits”: зачем нужен `/clear`, лимит 4096 симв. и т.д. |
-| **pre-commit** | Убедиться, что новые файлы проходят `black`, `isort`, `flake8`, `mypy`.             |
-| **CI**         | Тесты уже исполняются — изменений не требуется.                                     |
+| Наблюдение                                                                                                  | Файл / каталог                                             |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Бот-ядро (`/start`, `/ping`) и фабрика `create_bot_and_dispatcher()` реализованы.                           | `bot/main.py`                                              |
+| Работают `AuthMiddleware` и (после Iter 3) `ContextMiddleware`, утилита `send_long_message`.                | `bot/middleware.py`, `services/context.py`, `bot/utils.py` |
+| Таблицы `users / requests / responses / models` и helper-методы `log_request`, `log_response` присутствуют. | `database.py`                                              |
+| Папка **`providers/`** ещё **отсутствует**. В коде прямых вызовов LLM API нет.                              | —                                                          |
+| В `tests/` есть проверки `/start`, `/auth`, `/context`, но **нет** тестов для LLM-слоя.                     | `tests/…`                                                  |
+| `.env.example` не содержит ключей LLM-провайдеров.                                                          | `.env.example`                                             |
 
 ---
 
-#### 4. P — **Push**
+## 1. T — **Test first**
+
+| Шаг                                       | Детали                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Файл**                                  | `tests/providers/test_registry.py`                                                                                                                                                                                                                                                                                                                                |
+| **Fixtures**                              | *HTTP-моки* через **`respx`** (для `httpx`), *monkeypatch* для Google Gemini SDK.                                                                                                                                                                                                                                                                                 |
+| **Тест-кейс 1 «list\_models агрегирует»** | 1. Создать инстанс `ProviderRegistry()`.<br>2. Замокать `GeminiProvider.list_models` → `[\"gemini-pro\"]`; `MistralProvider.list_models` → `[\"mistral-8x7b\"]`; `DipseekProvider.list_models` → `[\"dipseek-latest\"]`.<br>3. Ожидается, что `await registry.list_all()` вернёт объединённый сет.                                                                |
+| **Тест-кейс 2 «generate логирует в БД»**  | 1. Подготовить временную SQLite (та же техника, что в `test_schema.py`).<br>2. Замокать `GeminiProvider.generate` → строка "stub".<br>3. Вызвать high-level функцию `generate_reply(chat_id, prompt, model=\"gemini-pro\")`.<br>4. Проверить, что:<br>• В `requests` появилась запись с нужным `model`; <br>• В `responses` появилась пара с тем же `request_id`. |
+| Ожидание                                  | Тесты падают, т.к. нет провайдеров и registry.                                                                                                                                                                                                                                                                                                                    |
+
+---
+
+## 2. F — **Feature**
+
+| №   | Задача                                          | Детали / Файл                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.1 | **Создать каталог `providers/`**                | ├─ `__init__.py` (реэкспорт Registry)<br>├─ `base.py`<br>├─ `gemini.py`<br>├─ `mistral.py`<br>└─ `dipseek.py`                                                                                                                           |
+| 2.2 | **`BaseProvider`**                              | Async-абстракция:<br>`python<br>class BaseProvider(ABC):<br>    name: str  # \"gemini\", \"mistral\"…<br>    async def list_models(self) -> list[str]: ...<br>    async def generate(...): ...<br>    supports_files: bool = False<br>` |
+| 2.3 | **`GeminiProvider`**                            | Использовать `google.cloud.aiplatform.gapic.PredictionServiceAsyncClient`.<br>*Методы*:<br>• `list_models()` → парсит Vertex `modelsClient.list_models`.<br>• `generate(prompt, context)` → возвращает текст.                           |
+| 2.4 | **`MistralProvider`**                           | HTTP клиент `httpx.AsyncClient`.<br>• `list_models()` GET `/v1/models`.<br>• `generate()` POST `/v1/chat/completions`.                                                                                                                  |
+| 2.5 | **`DipseekProvider`**                           | Аналогично Mistral; эндпоинт и ключ берутся из `.env`.                                                                                                                                                                                  |
+| 2.6 | **`ProviderRegistry`**                          | Сканирует `BaseProvider` подклассы, инициализирует их с creds из env.<br>Методы:<br>• `list_all()` → объединённый набор;<br>• `get(name)` → провайдер.                                                                                  |
+| 2.7 | **High-level helper** `services/llm_service.py` | `python<br>async def generate_reply(chat_id, prompt, model):<br>    req_id = await log_request(... )<br>    text = await provider.generate(... )<br>    await log_response(req_id, text)<br>    return text<br>`                        |
+| 2.8 | **Интеграция в бот**                            | В хендлере диалога (будет добавлен позднее) вместо заглушки вызывать `generate_reply`.                                                                                                                                                  |
+| 2.9 | **ENV**                                         | Обновить `.env.example`:<br>`\n# Gemini\nGEMINI_PROJECT=\nGEMINI_LOCATION=\nGEMINI_KEY=\n# Mistral\nMISTRAL_API_KEY=\n# Dipseek\nDIPSEEK_ENDPOINT=\nDIPSEEK_API_KEY=\n`                                                                 |
+
+---
+
+## 3. I — **Integrate**
+
+| Действие       | Детали                                                                                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Док-строки** | В каждом провайдере — ссылка на официальную доку, формат payload.                                                                                                    |
+| **README**     | Раздел “Supported LLM providers”; таблица `name / supports_files / env_vars`.                                                                                        |
+| **pre-commit** | Проверить `providers/*` mypy-strict (ignore\_missing\_imports for external SDK).                                                                                     |
+| **CI**         | `requirements.txt` дополнить `google-cloud-aiplatform`, `httpx`, `respx`.<br>Workflow `ci.yml` — `pip install -r requirements.txt` уже есть, тесты сами подхватятся. |
+
+---
+
+## 4. P — **Push**
 
 ```bash
 git add .
-git commit -m "feat(conversation): add per-chat context buffer and safe message splitting"
+git commit -m "feat(llm): pluggable provider layer (Gemini, Mistral, Dipseek)"
 git push origin master
 ```
 
 ---
 
-### Результат итерации
+### Итог итерации 4
 
-| Компонент / Функция                | Итоговое состояние                    |
-| ---------------------------------- | ------------------------------------- |
-| `services/context.py`              | Буфер сообщений per-chat              |
-| `ContextMiddleware`                | Сохраняет историю, очищается `/clear` |
-| `send_long_message`                | Делит ответы > 4096 симв.             |
-| Команда `/clear`                   | Работает                              |
-| Тест-набор `tests/test_context.py` | Зелёный                               |
-| `.env.example`, README             | Обновлены                             |
-| CI (lint + tests + docker)         | Проходит                              |
-
+| Компонент / Функция            | Состояние                                       |
+| ------------------------------ | ----------------------------------------------- |
+| Каталог `providers/`           | содержит 3 асинхронных клиента + `BaseProvider` |
+| `ProviderRegistry`             | отдаёт список моделей, проксирует генерацию     |
+| `services/llm_service.py`      | центровой API для бота + логирование в БД       |
+| Тест-набор `tests/providers/*` | зелёный                                         |
+| `.env.example`, README         | переменные и инструкция по ключам               |
+| CI (lint · tests · docker)     | зелёный                                         |
