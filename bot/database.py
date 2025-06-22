@@ -2,7 +2,7 @@
 =================
 
 ```
-users(id PK, tg_id UNIQUE, name)
+users(id PK, tg_id UNIQUE, name, is_active, requested_at)
 requests(id PK, user_id FK users.id, prompt, model, created_at)
 responses(id PK, request_id FK requests.id, content, created_at)
 models(id PK, provider, name, updated_at)
@@ -20,7 +20,9 @@ CREATE_USERS = """
 CREATE TABLE IF NOT EXISTS users(
     id     INTEGER PRIMARY KEY,
     tg_id  INTEGER UNIQUE,
-    name   TEXT
+    name   TEXT,
+    is_active INTEGER NOT NULL DEFAULT 0,
+    requested_at TIMESTAMP
 );
 """
 

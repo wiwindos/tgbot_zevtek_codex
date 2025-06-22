@@ -4,9 +4,11 @@ import asyncio
 from datetime import datetime
 
 import pytest
-from aiogram import types
+import pytest_asyncio
+from aiogram import Bot, types
 from aiogram.types import Update
 
+from bot import database
 from bot.main import create_bot_and_dispatcher
 
 
@@ -23,8 +25,16 @@ def event_loop():
     loop.close()
 
 
+@pytest_asyncio.fixture()
+async def temp_db(tmp_path, monkeypatch):
+    db_path = tmp_path / "start.db"
+    monkeypatch.setattr(database, "DB_PATH", db_path)
+    await database.init_db()
+    return db_path
+
+
 @pytest.fixture()
-def bot_and_dp(monkeypatch):
+def bot_and_dp(monkeypatch, temp_db):
     bot, dp = create_bot_and_dispatcher()
 
     # Перехватываем msg.answer вместо HTTP-запроса
@@ -42,8 +52,18 @@ def bot_and_dp(monkeypatch):
             text=text,
         )
 
-    # Перехватываем вызовы Message.answer
+    async def fake_send(self, chat_id, text, **kwargs):
+        send_calls.append((chat_id, text))
+        return types.Message(
+            message_id=0,
+            date=datetime.now(),
+            chat=types.Chat(id=chat_id, type="private"),
+            from_user=None,
+            text=text,
+        )
+
     monkeypatch.setattr(types.Message, "answer", fake_answer)
+    monkeypatch.setattr(Bot, "send_message", fake_send)
 
     return bot, dp, send_calls
 
