@@ -12,6 +12,7 @@ from bot.context_middleware import ContextMiddleware
 from bot.conversation import get_conversation_router
 from bot.middleware import AuthMiddleware
 from bot.utils import send_long_message
+from scheduler.runner import configure, scheduler
 from services.context import ContextBuffer
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -56,6 +57,9 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     dp.message(Command("start"))(start_handler)
     dp.message(Command("help"))(help_handler)
     dp.message(Command("ping"))(ping_handler)
+    if os.getenv("ENABLE_SCHEDULER", "1") == "1":
+        configure()
+        scheduler.start()
     return bot, dp
 
 

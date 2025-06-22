@@ -32,3 +32,4 @@ def stub_provider_registry(monkeypatch):
             return self._providers["gemini"]
 
     monkeypatch.setattr("services.llm_service.ProviderRegistry", DummyRegistry)
+    monkeypatch.setenv("ENABLE_SCHEDULER", "0")
