@@ -1,61 +1,55 @@
-### Итерация 7 — **Admin Command Suite Enhancement**
+### Итерация 8 — **Observability & Error Handling**
 
-*(T – F – I – P план; синхронизирован с текущим кодом `tgbot_zevtek_codex` после Iter 6)*
+*(T – F – I – P план; сверен с текущим состоянием `wiwindos/tgbot_zevtek_codex` после Iter 7)*
 
 ---
 
 #### Текущее состояние репозитория
 
-| Факт                                                                                                                                            | Расположение          |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| Админ-чат определяется помещённым в `.env` `ADMIN_CHAT_ID`; одобрение заявки уже работает через `/admin approve <tg_id>` **или** inline-кнопку. | `bot/admin_router.py` |
-| Таблица `users` содержит `is_active` и `requested_at`.                                                                                          | `database.py`         |
-| Модели LLM синкаются кроном, уведомление админу шлётся.                                                                                         | `scheduler/jobs.py`   |
-| База на `aiosqlite`; есть функции `log_request`, `log_response`, `log_file`.                                                                    | `database.py`         |
-| Нет команд для: статистики, списка заявок, ручного обновления моделей, временного отключения пользователя.                                      | —                     |
-| В `tests/` отсутствуют проверки админ-функций.                                                                                                  | `tests/…`             |
+| Факт                                                                                                                      | Расположение                       |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Клиент бота работает, middlewares `AuthMiddleware`, `ContextMiddleware` уже подключены.                                   | `bot/middleware.py`, `bot/main.py` |
+| Логи пишутся простым `logging.basicConfig(level=INFO)`; формат — строковый, без JSON.                                     | `bot/main.py`                      |
+| Нет глобального перехвата необработанных исключений; пользователь получает default error Telegram, админ не уведомляется. | —                                  |
+| Файлов мониторинга / трассировки (Sentry, structlog) нет.                                                                 | —                                  |
+| CI lint/tests/docker зелёные; pre-commit настроен.                                                                        | `.github/workflows/ci.yml`         |
 
 ---
 
 ## 1. **T — Test first**
 
-| Шаг                                        | Детали                                                                                                                                                                                                |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Файл**                                   | `tests/bot/test_admin_cmds.py`                                                                                                                                                                        |
-| **Fixtures**                               | • tmp-DB (`init_db()`); <br>• `ADMIN_CHAT_ID = 999`; <br>• Моки `Bot.send_message` / `Message.answer`.                                                                                                |
-| **Тест-кейс 1 «/admin stats»**             | Создать в БД: 3 пользователя (`is_active`: 2×1, 1×0); 10 запросов; 10 ответов; 1 файл. <br>Отправить `/admin stats` от id 999 → бот отвечает строкой «Users: 3 (2 active) • Requests: 10 • Files: 1». |
-| **Тест-кейс 2 «/admin users pending»**     | БД: 2 заявки (`is_active==0`). Команда от 999 → бот шлёт список вида: «123 — Test User\n456 — Alice».                                                                                                 |
-| **Тест-кейс 3 «/admin disable \<tg\_id>»** | Для активного пользователя 123: <br>• `/admin disable 123` → `users.is_active` становится 0; <br>• пользователю отправляется «Доступ временно закрыт».                                                |
-| **Тест-кейс 4 «/admin models»**            | В `models` 3 строки. Команда возвращает форматированный список с датой `updated_at`.                                                                                                                  |
-| **Тест-кейс 5 «/admin refresh models»**    | Мок `scheduler.pull_and_sync_models` → diff. После команды бот отвечает «Модели обновлены ☑️».                                                                                                        |
-| Ожидание                                   | Все тесты падают (фич не существует).                                                                                                                                                                 |
+| Шаг                            | Детали                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Файл**                       | `tests/integration/test_errors.py`                                                                                                                                                                                                                                                                                                                                |
+| **Fixtures**                   | • tmp-DB; <br>• `ADMIN_CHAT_ID = 999`; <br>• patch `providers.GeminiProvider.generate` → `raise RuntimeError("gemini boom")`; <br>• capture `caplog` (pytest fixture) + мок `Bot.send_message`.                                                                                                                                                                   |
+| **Тест-кейс «graceful error»** | 1. Отправить текст, выбранная модель — «gemini-pro».<br>2. Проверить: <br> a) пользователю бот отвечает «Что-то пошло не так, попробуйте позже» (friendly).<br> b) `Bot.send_message` в админ-чат вызван с текстом, содержащим `RuntimeError`.<br> c) `caplog.records` содержит JSON-лог с полем `"event": "unhandled_exception"` и `"exc_info": "RuntimeError"`. |
+| **Ожидание**                   | Тест падает — нет middleware, нет JSON-логов, нет уведомления.                                                                                                                                                                                                                                                                                                    |
 
 ---
 
 ## 2. **F — Feature**
 
-| №   | Задача                                                             | Файл / модуль                                                                                                    |                                              |
-| --- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| 2.1 | **Расширить `admin_router`** (или создать `bot/admin/commands.py`) | Добавить 5 новых команд: `stats`, `users pending`, `models`, `refresh models`, `disable/enable <tg_id>`.         |                                              |
-| 2.2 | **`/admin stats`**                                                 | Считаем: `SELECT COUNT(*)`, `SUM(is_active)`, `COUNT(requests)`, `COUNT(files)`; формируем краткую строку.       |                                              |
-| 2.3 | **`/admin users pending`**                                         | `SELECT tg_id, name FROM users WHERE is_active=0`; группируем в список (chunk ≤4096).                            |                                              |
-| 2.4 | **`/admin disable/enable`**                                        | \`set\_active(tg\_id, False                                                                                      | True)\`; уведомление пользователю о статусе. |
-| 2.5 | **`/admin models`**                                                | `SELECT name, provider, updated_at FROM models ORDER BY provider,name`; вывод в таблицу Markdown или plain-list. |                                              |
-| 2.6 | **`/admin refresh models`**                                        | Импорт `scheduler.jobs.pull_and_sync_models`; запускаем и показываем diff-результат.                             |                                              |
-| 2.7 | **Хелп-сообщение**                                                 | Расширить `/admin help` (или `/help`) кратким описанием новых сабкоманд.                                         |                                              |
-| 2.8 | **Доступ**                                                         | Все команды защищены фильтром `F.from_user.id == ADMIN_CHAT_ID`.                                                 |                                              |
-| 2.9 | **Utils**                                                          | При длинных списках применять `send_long_message`.                                                               |                                              |
+| №   | Задача                           | Файл / модуль                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.1 | **Структурный логгер**           | Добавить зависимость `structlog` и (опционально) `sentry-sdk` (`requirements.txt`).                                                                                                                                                                                                                                                                                                                                                                            |
+| 2.2 | **`logging_config.py`**          | Новый модуль: функция `configure_logging(level: str = "INFO")`<br>• stdlib → structlog binding;<br>• JSON `processors=[structlog.processors.JSONRenderer()]`;<br>• читает `LOG_LEVEL` из env.                                                                                                                                                                                                                                                                  |
+| 2.3 | **Инициализация**                | В начале `bot/main.py` вызвать `configure_logging()` до создания `Bot`.                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2.4 | **Middleware `ErrorMiddleware`** | `bot/error_middleware.py`:<br>`python<br>class ErrorMiddleware(BaseMiddleware):<br>    async def __call__(handler, event, data):<br>        try: return await handler(event, data)<br>        except Exception as exc:<br>            logger.exception(\"unhandled_exception\", exc_info=exc)<br>            await send_long_message(event.chat.id, \"Что-то пошло не так…\")<br>            await bot.send_message(ADMIN_CHAT_ID, f\"❗️ Ошибка: {exc}\")<br>` |
+| 2.5 | **Подключить middleware**        | В `create_bot_and_dispatcher()` добавить `dp.message.middleware(ErrorMiddleware())` **первым** в цепочке.                                                                                                                                                                                                                                                                                                                                                      |
+| 2.6 | **Sentry (опц.)**                | В `logging_config.configure_logging()`:<br>`python<br>dsn = os.getenv(\"SENTRY_DSN\")<br>if dsn: sentry_sdk.init(dsn, traces_sample_rate=0.1)<br>`                                                                                                                                                                                                                                                                                                             |
+| 2.7 | **Health-лог**                   | При старте (`main.py`) лог `logger.info("bot_started", version=__version__)`.                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2.8 | **ENV-пример**                   | `.env.example` — добавить `LOG_LEVEL=INFO`, `SENTRY_DSN=`.                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ---
 
 ## 3. **I — Integrate**
 
-| Действие         | Детали                                                     |
-| ---------------- | ---------------------------------------------------------- |
-| **README**       | Новый раздел “Админ-команды” с примерами использования.    |
-| **pre-commit**   | mypy-strict для `bot/admin/*`.                             |
-| **CI**           | Тесты уже подхватываются; зависимости не меняются.         |
-| **.env.example** | Обновить блок `# Admin`; добавить примеры `ADMIN_CHAT_ID`. |
+| Действие       | Описание                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **README**     | Новый раздел “Observability”: пример JSON-лога, переменные `LOG_LEVEL`, `SENTRY_DSN`; как видеть ошибки в админ-чате. |
+| **pre-commit** | mypy-strict `bot/error_middleware.py`, `logging_config.py`.                                                           |
+| **CI**         | Dependabot-стиль: `pytest` уже захватит новый тест; Dockerfile — `pip install structlog sentry-sdk`.                  |
+| **Док-строки** | В `ErrorMiddleware` подробно описать порядок обработки исключений.                                                    |
 
 ---
 
@@ -63,21 +57,21 @@
 
 ```bash
 git add .
-git commit -m "feat(admin): stats, user list, model listing, refresh and enable/disable commands"
+git commit -m "feat(obs): structured JSON logging and global error middleware with admin alerts"
 git push origin master
 ```
 
 ---
 
-### Итог Iter 7
+### Итог Iter 8
 
-| Команда / Функция               | Статус                               |
-| ------------------------------- | ------------------------------------ |
-| `/admin stats`                  | показывает агрегаты                  |
-| `/admin users pending`          | выводит список заявок                |
-| `/admin models`                 | перечисляет текущие модели           |
-| `/admin refresh models`         | ручной запуск синка                  |
-| `/admin disable` / `enable`     | временно закрывает/возвращает доступ |
-| Тест-набор `test_admin_cmds.py` | зелёный                              |
-| README, .env                    | обновлены                            |
-| CI / pre-commit                 | зелёные                              |
+| Компонент / Функция                     | Состояние                                                   |
+| --------------------------------------- | ----------------------------------------------------------- |
+| `structlog` JSON-формат                 | настроен, вывод в stdout                                    |
+| `ErrorMiddleware`                       | ловит все необработанные, отвечает юзеру + уведомляет админ |
+| Sentry интеграция (env-опц.)            | работает при наличии `SENTRY_DSN`                           |
+| Конфиг `LOG_LEVEL`                      | читается из .env                                            |
+| Тест `tests/integration/test_errors.py` | зелёный                                                     |
+| README / .env.example                   | обновлены                                                   |
+| CI / Docker                             | проходят                                                    |
+
