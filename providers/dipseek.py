@@ -33,8 +33,13 @@ class DipseekProvider(BaseProvider):
         return data.get("models", [])
 
     async def generate(
-        self, prompt: str, context: Sequence[tuple[str, str]] | None = None
+        self,
+        prompt: str,
+        context: Sequence[tuple[str, str]] | None = None,
+        file_bytes: bytes | None = None,
     ) -> str:
+        if file_bytes is not None:
+            raise NotImplementedError("Files not supported")
         payload = {"messages": [{"role": "user", "content": prompt}]}
         resp = await self._client.post(
             "/v1/chat/completions",

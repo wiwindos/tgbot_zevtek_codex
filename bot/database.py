@@ -6,6 +6,7 @@ users(id PK, tg_id UNIQUE, name, is_active, requested_at)
 requests(id PK, user_id FK users.id, prompt, model, created_at)
 responses(id PK, request_id FK requests.id, content, created_at)
 models(id PK, provider, name, updated_at)
+files(id PK, request_id FK requests.id, path, mime, uploaded_at)
 ```
 """
 
@@ -54,6 +55,16 @@ CREATE TABLE IF NOT EXISTS models(
 );
 """
 
+CREATE_FILES = """
+CREATE TABLE IF NOT EXISTS files(
+    id INTEGER PRIMARY KEY,
+    request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+    path TEXT,
+    mime TEXT,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -62,6 +73,7 @@ async def init_db():
         await db.execute(CREATE_REQUESTS)
         await db.execute(CREATE_RESPONSES)
         await db.execute(CREATE_MODELS)
+        await db.execute(CREATE_FILES)
         await db.commit()
 
 
@@ -90,5 +102,14 @@ async def log_response(request_id: int, content: str) -> None:
         await db.execute(
             "INSERT INTO responses(request_id, content) VALUES(?, ?)",
             (request_id, content),
+        )
+        await db.commit()
+
+
+async def log_file(request_id: int, path: str, mime: str) -> None:
+    async with get_db() as db:
+        await db.execute(
+            "INSERT INTO files(request_id, path, mime) VALUES(?, ?, ?)",
+            (request_id, path, mime),
         )
         await db.commit()

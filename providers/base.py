@@ -16,6 +16,15 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def generate(
-        self, prompt: str, context: Sequence[tuple[str, str]] | None = None
+        self,
+        prompt: str,
+        context: Sequence[tuple[str, str]] | None = None,
+        file_bytes: bytes | None = None,
     ) -> str:
-        """Generate text from LLM."""
+        """Generate text from LLM.
+
+        Parameters
+        ----------
+        file_bytes:
+            Optional raw file content passed to multimodal models.
+        """

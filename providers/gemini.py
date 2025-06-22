@@ -17,6 +17,7 @@ class GeminiProvider(BaseProvider):
     """Google Gemini LLM via Vertex AI."""
 
     name = "gemini"
+    supports_files = True
 
     def __init__(self) -> None:
         project = os.getenv("GEMINI_PROJECT", "")
@@ -38,10 +39,15 @@ class GeminiProvider(BaseProvider):
         return [self.model]
 
     async def generate(
-        self, prompt: str, context: Sequence[tuple[str, str]] | None = None
+        self,
+        prompt: str,
+        context: Sequence[tuple[str, str]] | None = None,
+        file_bytes: bytes | None = None,
     ) -> str:
         # Real payload structure simplified for demo
         instances = [{"prompt": prompt}]
+        if file_bytes is not None:
+            instances[0]["file"] = file_bytes.decode("utf-8", "ignore")
         response = await self._client.predict(
             endpoint=self._parent, instances=instances, parameters={}
         )

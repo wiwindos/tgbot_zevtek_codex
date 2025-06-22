@@ -48,3 +48,10 @@ The bot uses APScheduler to update the `models` table on a schedule defined by
 `REFRESH_CRON` (default `0 0 * * *`). New models detected across providers are
 reported to the chat specified in `ADMIN_CHAT_ID`. Set `ENABLE_SCHEDULER=0` to
 disable the job.
+
+## Работа с файлами
+
+Загруженные документы сохраняются в каталог, указанный в `FILES_DIR` (по
+умолчанию `./data/files`). Модели, поддерживающие файлы, например Gemini,
+получают содержимое в виде байтов и могут возвращать ответ. Для моделей без
+поддержки бот сообщит «Модель … не принимает файлы».

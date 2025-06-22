@@ -33,8 +33,13 @@ class MistralProvider(BaseProvider):
         return [m["id"] for m in data.get("data", [])]
 
     async def generate(
-        self, prompt: str, context: Sequence[tuple[str, str]] | None = None
+        self,
+        prompt: str,
+        context: Sequence[tuple[str, str]] | None = None,
+        file_bytes: bytes | None = None,
     ) -> str:
+        if file_bytes is not None:
+            raise NotImplementedError("Files not supported")
         payload = {
             "model": "mistral-small",
             "messages": [{"role": "user", "content": prompt}],
