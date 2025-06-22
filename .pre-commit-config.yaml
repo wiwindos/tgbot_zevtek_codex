@@ -24,3 +24,6 @@ repos:
       - id: mypy
         name: mypy scheduler
         files: ^scheduler/
+      - id: mypy
+        name: mypy bot handlers
+        files: ^bot/file_handlers.py$

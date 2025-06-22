@@ -16,6 +16,14 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def generate(
-        self, prompt: str, context: Sequence[tuple[str, str]] | None = None
+        self,
+        prompt: str,
+        context: Sequence[tuple[str, str]] | None = None,
+        file_bytes: bytes | None = None,
     ) -> str:
-        """Generate text from LLM."""
+        """Generate text from LLM.
+
+        ``file_bytes`` contains optional uploaded file content.
+        Providers that do not set ``supports_files`` should ignore this
+        parameter and raise ``NotImplementedError`` if it is not ``None``.
+        """
