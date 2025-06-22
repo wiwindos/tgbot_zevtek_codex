@@ -1,58 +1,61 @@
-### Итерация 6 — **File Handling (upload → LLM → reply)**
+### Итерация 7 — **Admin Command Suite Enhancement**
 
-*(чет-пошаговый T – F – I – P план; состояние синхронизировано с репозиторием `wiwindos/tgbot_zevtek_codex`)*
+*(T – F – I – P план; синхронизирован с текущим кодом `tgbot_zevtek_codex` после Iter 6)*
 
 ---
 
-#### Текущее состояние (`master`)
+#### Текущее состояние репозитория
 
-| Факт                                                                                                                                   | Файл / каталог            |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| Базовый бот с `/start`, `/ping`, `/clear`; `AuthMiddleware`, `ContextMiddleware`, сплиттер длинных сообщений.                          | `bot/…`                   |
-| Провайдеры `GeminiProvider`, `MistralProvider`, `DipseekProvider`; у класса `BaseProvider` флаг `supports_files = False` по-умолчанию. | `providers/…`             |
-| Сервис `generate_reply()` логирует запрос/ответ в таблицы `requests` и `responses`.                                                    | `services/llm_service.py` |
-| Таблица `files` **не существует**, приём вложений TG не обрабатывается.                                                                | —                         |
-| Scheduler (Iter 5) обновляет `models` и шлёт уведомления админу.                                                                       | `scheduler/jobs.py`       |
-| В `tests/` отсутствуют проверки файлового пути.                                                                                        | `tests/…`                 |
+| Факт                                                                                                                                            | Расположение          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Админ-чат определяется помещённым в `.env` `ADMIN_CHAT_ID`; одобрение заявки уже работает через `/admin approve <tg_id>` **или** inline-кнопку. | `bot/admin_router.py` |
+| Таблица `users` содержит `is_active` и `requested_at`.                                                                                          | `database.py`         |
+| Модели LLM синкаются кроном, уведомление админу шлётся.                                                                                         | `scheduler/jobs.py`   |
+| База на `aiosqlite`; есть функции `log_request`, `log_response`, `log_file`.                                                                    | `database.py`         |
+| Нет команд для: статистики, списка заявок, ручного обновления моделей, временного отключения пользователя.                                      | —                     |
+| В `tests/` отсутствуют проверки админ-функций.                                                                                                  | `tests/…`             |
 
 ---
 
 ## 1. **T — Test first**
 
-| Шаг                                      | Детали                                                                                                                                                                                                                                                                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Файл**                                 | `tests/bot/test_file.py`                                                                                                                                                                                                                                                                                                              |
-| **Fixtures**                             | • tmpdir + `init_db()`; <br>• мок `GeminiProvider.supports_files = True` и `GeminiProvider.generate` (ожидает bytes).                                                                                                                                                                                                                 |
-| **Тест-кейс 1 «upload + summary»**       | 1. Через фикстуру создаём `Message` с типом `document` (`file_id="123", file_name="demo.pdf"`).<br>2. Middleware/handler вызывает приём, сохраняет файл в `/data/files/<uuid>.pdf`.<br>3. Проверяем:<br>• таблица `files` получила запись (`path`, `mime`, `request_id`);<br>• `GeminiProvider.generate` был вызван (переданы bytes). |
-| **Тест-кейс 2 «provider без поддержки»** | Подменяем `MistralProvider.supports_files = False`.<br>Отправляем файл + выбранная модель `mistral-*` → бот отвечает «Эта модель не принимает файлы», `GeminiProvider.generate` не вызывается.                                                                                                                                        |
-| Ожидание                                 | Тесты падают — ни таблицы, ни логики нет.                                                                                                                                                                                                                                                                                             |
+| Шаг                                        | Детали                                                                                                                                                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Файл**                                   | `tests/bot/test_admin_cmds.py`                                                                                                                                                                        |
+| **Fixtures**                               | • tmp-DB (`init_db()`); <br>• `ADMIN_CHAT_ID = 999`; <br>• Моки `Bot.send_message` / `Message.answer`.                                                                                                |
+| **Тест-кейс 1 «/admin stats»**             | Создать в БД: 3 пользователя (`is_active`: 2×1, 1×0); 10 запросов; 10 ответов; 1 файл. <br>Отправить `/admin stats` от id 999 → бот отвечает строкой «Users: 3 (2 active) • Requests: 10 • Files: 1». |
+| **Тест-кейс 2 «/admin users pending»**     | БД: 2 заявки (`is_active==0`). Команда от 999 → бот шлёт список вида: «123 — Test User\n456 — Alice».                                                                                                 |
+| **Тест-кейс 3 «/admin disable \<tg\_id>»** | Для активного пользователя 123: <br>• `/admin disable 123` → `users.is_active` становится 0; <br>• пользователю отправляется «Доступ временно закрыт».                                                |
+| **Тест-кейс 4 «/admin models»**            | В `models` 3 строки. Команда возвращает форматированный список с датой `updated_at`.                                                                                                                  |
+| **Тест-кейс 5 «/admin refresh models»**    | Мок `scheduler.pull_and_sync_models` → diff. После команды бот отвечает «Модели обновлены ☑️».                                                                                                        |
+| Ожидание                                   | Все тесты падают (фич не существует).                                                                                                                                                                 |
 
 ---
 
 ## 2. **F — Feature**
 
-| №   | Задача                                          | Файл / модуль                                                                                                                                                                                                                                                                                                                                                                                                         |                                                                                                                                       |
-| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 2.1 | **Добавить таблицу `files`**                    | В `database.py`:<br>`sql<br>CREATE TABLE IF NOT EXISTS files ( id INTEGER PK, request_id INTEGER, path TEXT, mime TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(request_id) REFERENCES requests(id) ON DELETE CASCADE);`                                                                                                                                                                         |                                                                                                                                       |
-| 2.2 | **Helper-метод**                                | `async def log_file(request_id, path, mime)` — insert в `files`.                                                                                                                                                                                                                                                                                                                                                      |                                                                                                                                       |
-| 2.3 | **Хранилище файлов**                            | Каталог `/data/files` (создавать при старте, if not exists).                                                                                                                                                                                                                                                                                                                                                          |                                                                                                                                       |
-| 2.4 | **Handler «file\_message»**                     | Новый роутер `bot/file_handlers.py`:<br>1. Принимает `Document`/`Photo`/`Audio`.<br>2. Скачивает файл: `await bot.get_file`, затем `await bot.download_file(file_path, dest)`. (Использовать `aiofiles` + `Bot.download_file` async).<br>3. Вызывает `generate_reply(chat_id, prompt='', model=selected, file_bytes=bytes)` **если** `provider.supports_files`.<br>4. Иначе отправляет «Модель … не принимает файлы». |                                                                                                                                       |
-| 2.5 | **Расширить `BaseProvider.generate` сигнатуру** | \`def generate(prompt, context, file\_bytes: bytes                                                                                                                                                                                                                                                                                                                                                                    | None = None)`. Провайдеры, где `supports\_files=False`, должны игнорировать `file\_bytes`и кидать`NotImplementedError`если не`None\`. |
-| 2.6 | **Реализация в GeminiProvider**                 | Если передан `file_bytes`, строит `Part(content=file_bytes, mime_type=mime)` и кладёт в `contents`, режим «multimodal».                                                                                                                                                                                                                                                                                               |                                                                                                                                       |
-| 2.7 | **Вызов `log_file`**                            | После получения `request_id` в `generate_reply()` — если файл присутствует, сохраняет запись.                                                                                                                                                                                                                                                                                                                         |                                                                                                                                       |
-| 2.8 | **.env**                                        | Путь хранения можно настраивать: `FILES_DIR=./data/files`.                                                                                                                                                                                                                                                                                                                                                            |                                                                                                                                       |
-| 2.9 | **Отправка ответа**                             | Использовать уже существующий `send_long_message` для текстового ответа, плюс, если провайдер вернёт файл (пока не нужно).                                                                                                                                                                                                                                                                                            |                                                                                                                                       |
+| №   | Задача                                                             | Файл / модуль                                                                                                    |                                              |
+| --- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 2.1 | **Расширить `admin_router`** (или создать `bot/admin/commands.py`) | Добавить 5 новых команд: `stats`, `users pending`, `models`, `refresh models`, `disable/enable <tg_id>`.         |                                              |
+| 2.2 | **`/admin stats`**                                                 | Считаем: `SELECT COUNT(*)`, `SUM(is_active)`, `COUNT(requests)`, `COUNT(files)`; формируем краткую строку.       |                                              |
+| 2.3 | **`/admin users pending`**                                         | `SELECT tg_id, name FROM users WHERE is_active=0`; группируем в список (chunk ≤4096).                            |                                              |
+| 2.4 | **`/admin disable/enable`**                                        | \`set\_active(tg\_id, False                                                                                      | True)\`; уведомление пользователю о статусе. |
+| 2.5 | **`/admin models`**                                                | `SELECT name, provider, updated_at FROM models ORDER BY provider,name`; вывод в таблицу Markdown или plain-list. |                                              |
+| 2.6 | **`/admin refresh models`**                                        | Импорт `scheduler.jobs.pull_and_sync_models`; запускаем и показываем diff-результат.                             |                                              |
+| 2.7 | **Хелп-сообщение**                                                 | Расширить `/admin help` (или `/help`) кратким описанием новых сабкоманд.                                         |                                              |
+| 2.8 | **Доступ**                                                         | Все команды защищены фильтром `F.from_user.id == ADMIN_CHAT_ID`.                                                 |                                              |
+| 2.9 | **Utils**                                                          | При длинных списках применять `send_long_message`.                                                               |                                              |
 
 ---
 
 ## 3. **I — Integrate**
 
-| Действие       | Детали                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
-| **README**     | Новый раздел «Работа с файлами»: список поддерживаемых расширений и моделей.                            |
-| **pre-commit** | Проверка mypy на `bot/file_handlers.py`.                                                                |
-| **CI**         | `requirements.txt` — возможно добавить `aiofiles`. Тесты в `tests/bot/test_file.py` теперь исполняются. |
-| **Док-строки** | В `BaseProvider.generate` описать параметр `file_bytes`.                                                |
+| Действие         | Детали                                                     |
+| ---------------- | ---------------------------------------------------------- |
+| **README**       | Новый раздел “Админ-команды” с примерами использования.    |
+| **pre-commit**   | mypy-strict для `bot/admin/*`.                             |
+| **CI**           | Тесты уже подхватываются; зависимости не меняются.         |
+| **.env.example** | Обновить блок `# Admin`; добавить примеры `ADMIN_CHAT_ID`. |
 
 ---
 
@@ -60,21 +63,21 @@
 
 ```bash
 git add .
-git commit -m "feat(files): accept TG documents, persist to DB and pass to file-capable LLMs"
+git commit -m "feat(admin): stats, user list, model listing, refresh and enable/disable commands"
 git push origin master
 ```
 
 ---
 
-### Итог Iter 6
+### Итог Iter 7
 
-| Компонент / Функция            | Состояние                                     |
-| ------------------------------ | --------------------------------------------- |
-| Таблица `files`                | создана, каскад `request_id`                  |
-| `bot/file_handlers.py`         | скачивает вложения, вызывает LLM              |
-| Расширение `BaseProvider`      | сигнатура `file_bytes`, флаг `supports_files` |
-| Поддержка в `GeminiProvider`   | multi-modal запрос                            |
-| `log_file()` + физ. папка      | реализованы                                   |
-| Тесты `tests/bot/test_file.py` | зелёные                                       |
-| README / .env                  | обновлены                                     |
-| CI / pre-commit                | проходит                                      |
+| Команда / Функция               | Статус                               |
+| ------------------------------- | ------------------------------------ |
+| `/admin stats`                  | показывает агрегаты                  |
+| `/admin users pending`          | выводит список заявок                |
+| `/admin models`                 | перечисляет текущие модели           |
+| `/admin refresh models`         | ручной запуск синка                  |
+| `/admin disable` / `enable`     | временно закрывает/возвращает доступ |
+| Тест-набор `test_admin_cmds.py` | зелёный                              |
+| README, .env                    | обновлены                            |
+| CI / pre-commit                 | зелёные                              |
