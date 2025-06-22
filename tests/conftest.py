@@ -18,7 +18,7 @@ def stub_provider_registry(monkeypatch):
         async def list_models(self):
             return ["gemini-pro"]
 
-        async def generate(self, prompt, context=None):
+        async def generate(self, prompt, context=None, file_bytes=None):
             return "stub"
 
     class DummyRegistry:

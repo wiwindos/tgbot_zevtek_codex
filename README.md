@@ -38,9 +38,15 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 
 | name    | supports_files | env vars                             |
 |---------|---------------|--------------------------------------|
-| gemini  | false         | `GEMINI_PROJECT`, `GEMINI_LOCATION`, `GEMINI_KEY` |
+| gemini  | true          | `GEMINI_PROJECT`, `GEMINI_LOCATION`, `GEMINI_KEY` |
 | mistral | false         | `MISTRAL_API_KEY`                    |
 | dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |
+
+## File handling
+
+Uploaded documents are saved to the directory defined by `FILES_DIR` (default
+`./data/files`). Only models with ``supports_files`` can process files. Gemini
+currently supports file input.
 
 ## Model auto-refresh
 

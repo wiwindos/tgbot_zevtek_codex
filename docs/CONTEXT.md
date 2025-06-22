@@ -34,6 +34,16 @@
   * `created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
 * Таблица `responses`.
 
+### File
+
+* Поля:
+  * `id: INTEGER PRIMARY KEY`
+  * `request_id: INTEGER` — FK на `requests.id`
+  * `path: TEXT` — путь к сохранённому файлу
+  * `mime: TEXT`
+  * `uploaded_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+* Таблица `files`.
+
 ### Model
 
 * Поля:
@@ -47,8 +57,8 @@
 
 | Модуль       | Описание                        | Файлы и папки                                                    |
 | ------------ | ------------------------------- | ---------------------------------------------------------------- |
-| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`), `conversation.py`, `utils.py` |
-| **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`) |
+| **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`), `conversation.py`, `file_handlers.py`, `utils.py` |
+| **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `log_file`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`, `CREATE_FILES`) |
 | **services** | Бизнес-логика пользователей и LLM | `services/user_service.py`, `services/llm_service.py`, `AuthMiddleware`, `ContextBuffer`, `admin_router` |
 | **providers** | Абстракции LLM-провайдеров | `providers/base.py`, `gemini.py`, `mistral.py`, `dipseek.py`, `registry.py` |
 | **scheduler** | Периодические задачи обновления моделей | `scheduler/jobs.py`, `scheduler/runner.py` |
@@ -65,5 +75,6 @@
 * **CI-пайплайн:** для проверки lint, тестов и автодеплоя смотрите `.github/workflows/ci.yml`.
 
 * **Контекст переписки:** `ContextBuffer` сохраняет последние сообщения чата; очистить историю можно командой `/clear`.
+* **Обработка файлов:** `file_handlers.py` сохраняет присланные документы в `FILES_DIR` и передаёт их содержимое в LLM при поддержке модели.
 
 > **Важно:** актуализируйте этот файл при расширении модели данных или изменении структуры проекта.
