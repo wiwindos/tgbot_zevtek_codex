@@ -1,74 +1,80 @@
-### Итерация 5 — **Scheduler for Model Auto-Refresh**
+### Итерация 6 — **File Handling (upload → LLM → reply)**
 
-*(T – F – I – P план; синхронизирован с текущей структурой репо `wiwindos/tgbot_zevtek_codex`)*
-
----
-
-#### Текущее состояние репозитория (master)
-
-| Факт                                                                                                                                     | Файл / каталог                               |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Базовый бот, middlewares и команда `/ping` присутствуют.                                                                                 | `bot/…` ([github.com][1])                    |
-| Таблица `models` уже создана в SQLite (Iter 1).                                                                                          | `bot/database.py`                            |
-| Плуг-ин-слой провайдеров реализован (Iter 4): `providers/` с `ProviderRegistry`, `GeminiProvider`, `MistralProvider`, `DipseekProvider`. | `providers/…` (появился после последнего PR) |
-| Уведомления админу отправляются через `ADMIN_CHAT_ID`; в тестах мокируется `Bot.send_message`.                                           | `bot/main.py`, `tests/…`                     |
-| Пока **нет** периодической службы, которая обновляет таблицу `models`.                                                                   | —                                            |
+*(чет-пошаговый T – F – I – P план; состояние синхронизировано с репозиторием `wiwindos/tgbot_zevtek_codex`)*
 
 ---
 
-## 1. T — **Test first**
+#### Текущее состояние (`master`)
 
-| Шаг                            | Детали                                                                                                                                                                                                                                                                            |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Файл**                       | `tests/scheduler/test_refresh.py`                                                                                                                                                                                                                                                 |
-| **Fixtures**                   | • Временный `bot.db` (tmpdir + `init_db()`);<br>• `provider_registry` c моками: `GeminiProvider.list_models` → `[\"g-1\"]`, `MistralProvider.list_models` → `[\"m-1\"]`, `DipseekProvider.list_models` → `[\"d-1\"]`.<br>• Мок `Bot.send_message` для отлова уведомлений.         |
-| **Тест 1 «первое заполнение»** | Запустить `await pull_and_sync_models(registry)`. <br>Ожидание: в таблице `models` ровно 3 строк, уведомлений **0** (первичное создание молчит).                                                                                                                                  |
-| **Тест 2 «детект изменений»**  | 1. Повторно замокать `MistralProvider.list_models` → `[\"m-2\"]` (модель поменялась).<br>2. Вызвать `pull_and_sync_models` снова.<br>3. Проверить:• таблица содержит 4 строки (`m-1` + `m-2`);<br>• `Bot.send_message` вызван **1 раз** и включает текст «обновлены модели: m-2». |
-| Ожидание                       | Оба теста падают (пока нет scheduler-кода).                                                                                                                                                                                                                                       |
-
----
-
-## 2. F — **Feature**
-
-| №   | Задача                              | Файл / модуль                                                                                                                                                                                                                                                           |
-| --- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2.1 | **Служба**                          | Новый пакет `scheduler/`:<br>• `__init__.py`;<br>• `jobs.py` c `async def pull_and_sync_models(registry, db_path=DB_PATH): …`.                                                                                                                                          |
-| 2.2 | **Алгоритм `pull_and_sync_models`** | 1. Для каждого провайдера → `list_models()`.<br>2. Сравнить с текущими строками `models` (по имени).<br>3. Добавить новые, обновить `updated_at` существующих.<br>4. Если diff ≠ Ø → `send_long_message(bot, ADMIN_CHAT_ID, f\"Обновлены модели: {', '.join(diff)}\")`. |
-| 2.3 | **APScheduler**                     | `scheduler/runner.py`:<br>`python<br>scheduler = AsyncIOScheduler()<br>scheduler.add_job(pull_and_sync_models, CronTrigger(hour=0, minute=0))<br>`                                                                                                                      |
-| 2.4 | **Старт сервиса**                   | В `create_bot_and_dispatcher()`:<br>`python<br>from scheduler.runner import scheduler<br>scheduler.start()  # после инициализации Bot/DP<br>`                                                                                                                           |
-| 2.5 | **ENV-константы**                   | `.env.example` → добавить `REFRESH_CRON=\"0 0 * * *\"`; опционально `ENABLE_SCHEDULER=1`.                                                                                                                                                                               |
-| 2.6 | **Requirements**                    | В `requirements.txt` добавить `APScheduler>=3.10`.                                                                                                                                                                                                                      |
-| 2.7 | **Док-строки**                      | В `jobs.py` описать формат таблицы `models` и пример diff-уведомления.                                                                                                                                                                                                  |
+| Факт                                                                                                                                   | Файл / каталог            |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Базовый бот с `/start`, `/ping`, `/clear`; `AuthMiddleware`, `ContextMiddleware`, сплиттер длинных сообщений.                          | `bot/…`                   |
+| Провайдеры `GeminiProvider`, `MistralProvider`, `DipseekProvider`; у класса `BaseProvider` флаг `supports_files = False` по-умолчанию. | `providers/…`             |
+| Сервис `generate_reply()` логирует запрос/ответ в таблицы `requests` и `responses`.                                                    | `services/llm_service.py` |
+| Таблица `files` **не существует**, приём вложений TG не обрабатывается.                                                                | —                         |
+| Scheduler (Iter 5) обновляет `models` и шлёт уведомления админу.                                                                       | `scheduler/jobs.py`       |
+| В `tests/` отсутствуют проверки файлового пути.                                                                                        | `tests/…`                 |
 
 ---
 
-## 3. I — **Integrate**
+## 1. **T — Test first**
 
-| Задача         | Детали                                                           |
-| -------------- | ---------------------------------------------------------------- |
-| **README**     | Раздел “Model auto-refresh”: как работает, как изменить cron.    |
-| **pre-commit** | mypy-check `scheduler/*`.                                        |
-| **CI**         | Тесты уже охватывают новый пакет; дополнительных шагов не нужно. |
+| Шаг                                      | Детали                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Файл**                                 | `tests/bot/test_file.py`                                                                                                                                                                                                                                                                                                              |
+| **Fixtures**                             | • tmpdir + `init_db()`; <br>• мок `GeminiProvider.supports_files = True` и `GeminiProvider.generate` (ожидает bytes).                                                                                                                                                                                                                 |
+| **Тест-кейс 1 «upload + summary»**       | 1. Через фикстуру создаём `Message` с типом `document` (`file_id="123", file_name="demo.pdf"`).<br>2. Middleware/handler вызывает приём, сохраняет файл в `/data/files/<uuid>.pdf`.<br>3. Проверяем:<br>• таблица `files` получила запись (`path`, `mime`, `request_id`);<br>• `GeminiProvider.generate` был вызван (переданы bytes). |
+| **Тест-кейс 2 «provider без поддержки»** | Подменяем `MistralProvider.supports_files = False`.<br>Отправляем файл + выбранная модель `mistral-*` → бот отвечает «Эта модель не принимает файлы», `GeminiProvider.generate` не вызывается.                                                                                                                                        |
+| Ожидание                                 | Тесты падают — ни таблицы, ни логики нет.                                                                                                                                                                                                                                                                                             |
 
 ---
 
-## 4. P — **Push**
+## 2. **F — Feature**
+
+| №   | Задача                                          | Файл / модуль                                                                                                                                                                                                                                                                                                                                                                                                         |                                                                                                                                       |
+| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.1 | **Добавить таблицу `files`**                    | В `database.py`:<br>`sql<br>CREATE TABLE IF NOT EXISTS files ( id INTEGER PK, request_id INTEGER, path TEXT, mime TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(request_id) REFERENCES requests(id) ON DELETE CASCADE);`                                                                                                                                                                         |                                                                                                                                       |
+| 2.2 | **Helper-метод**                                | `async def log_file(request_id, path, mime)` — insert в `files`.                                                                                                                                                                                                                                                                                                                                                      |                                                                                                                                       |
+| 2.3 | **Хранилище файлов**                            | Каталог `/data/files` (создавать при старте, if not exists).                                                                                                                                                                                                                                                                                                                                                          |                                                                                                                                       |
+| 2.4 | **Handler «file\_message»**                     | Новый роутер `bot/file_handlers.py`:<br>1. Принимает `Document`/`Photo`/`Audio`.<br>2. Скачивает файл: `await bot.get_file`, затем `await bot.download_file(file_path, dest)`. (Использовать `aiofiles` + `Bot.download_file` async).<br>3. Вызывает `generate_reply(chat_id, prompt='', model=selected, file_bytes=bytes)` **если** `provider.supports_files`.<br>4. Иначе отправляет «Модель … не принимает файлы». |                                                                                                                                       |
+| 2.5 | **Расширить `BaseProvider.generate` сигнатуру** | \`def generate(prompt, context, file\_bytes: bytes                                                                                                                                                                                                                                                                                                                                                                    | None = None)`. Провайдеры, где `supports\_files=False`, должны игнорировать `file\_bytes`и кидать`NotImplementedError`если не`None\`. |
+| 2.6 | **Реализация в GeminiProvider**                 | Если передан `file_bytes`, строит `Part(content=file_bytes, mime_type=mime)` и кладёт в `contents`, режим «multimodal».                                                                                                                                                                                                                                                                                               |                                                                                                                                       |
+| 2.7 | **Вызов `log_file`**                            | После получения `request_id` в `generate_reply()` — если файл присутствует, сохраняет запись.                                                                                                                                                                                                                                                                                                                         |                                                                                                                                       |
+| 2.8 | **.env**                                        | Путь хранения можно настраивать: `FILES_DIR=./data/files`.                                                                                                                                                                                                                                                                                                                                                            |                                                                                                                                       |
+| 2.9 | **Отправка ответа**                             | Использовать уже существующий `send_long_message` для текстового ответа, плюс, если провайдер вернёт файл (пока не нужно).                                                                                                                                                                                                                                                                                            |                                                                                                                                       |
+
+---
+
+## 3. **I — Integrate**
+
+| Действие       | Детали                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| **README**     | Новый раздел «Работа с файлами»: список поддерживаемых расширений и моделей.                            |
+| **pre-commit** | Проверка mypy на `bot/file_handlers.py`.                                                                |
+| **CI**         | `requirements.txt` — возможно добавить `aiofiles`. Тесты в `tests/bot/test_file.py` теперь исполняются. |
+| **Док-строки** | В `BaseProvider.generate` описать параметр `file_bytes`.                                                |
+
+---
+
+## 4. **P — Push**
 
 ```bash
 git add .
-git commit -m "feat(scheduler): daily model sync and admin notification"
+git commit -m "feat(files): accept TG documents, persist to DB and pass to file-capable LLMs"
 git push origin master
 ```
 
 ---
 
-### Итог Iter 5
+### Итог Iter 6
 
-| Компонент / Функция        | Статус                                          |
-| -------------------------- | ----------------------------------------------- |
-| `scheduler/` + APScheduler | Запускает Cron-задачу                           |
-| `pull_and_sync_models()`   | Обновляет таблицу `models`, уведомляет при diff |
-| ENV `REFRESH_CRON`         | Добавлен                                        |
-| Тесты `tests/scheduler/*`  | Зелёные                                         |
-| README / pre-commit / CI   | Обновлены                                       |
-
+| Компонент / Функция            | Состояние                                     |
+| ------------------------------ | --------------------------------------------- |
+| Таблица `files`                | создана, каскад `request_id`                  |
+| `bot/file_handlers.py`         | скачивает вложения, вызывает LLM              |
+| Расширение `BaseProvider`      | сигнатура `file_bytes`, флаг `supports_files` |
+| Поддержка в `GeminiProvider`   | multi-modal запрос                            |
+| `log_file()` + физ. папка      | реализованы                                   |
+| Тесты `tests/bot/test_file.py` | зелёные                                       |
+| README / .env                  | обновлены                                     |
+| CI / pre-commit                | проходит                                      |
