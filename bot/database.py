@@ -137,3 +137,19 @@ async def set_setting(key: str, value: str) -> None:
             (key, value),
         )
         await db.commit()
+
+
+if __name__ == "__main__":
+    import argparse
+    import asyncio
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        help="initialize database",
+    )
+    args = parser.parse_args()
+
+    if args.init:
+        asyncio.run(init_db())

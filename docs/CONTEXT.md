@@ -72,6 +72,7 @@
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
+| **deploy**   | Dockerfile и Compose-файлы      | `Dockerfile`, `.dockerignore`, `deploy/*.yml`, `scripts/entrypoint.sh`, `Makefile` |
 | **deps**     | Зависимости проекта             | `requirements.txt`                                               |
 | **logging**  | Структурированный вывод и перехват ошибок | `logging_config.py`, `bot/error_middleware.py` |
 
@@ -81,6 +82,7 @@
 * **Добавить новые поля в User:** редактируйте `CREATE TABLE users` в `database.py` и обновляйте `init_db()`.
 * **Тесты на новые функции бота:** добавляйте файлы в папку `tests/`, используйте `pytest` и мок `BOT_TOKEN` через `conftest.py`.
 * **CI-пайплайн:** для проверки lint, тестов и автодеплоя смотрите `.github/workflows/ci.yml`.
+* **Docker/Compose:** докеризированный запуск `make docker-build && make docker-run`, конфиги в папке `deploy/`.
 
 * **Контекст переписки:** `ContextBuffer` хранит историю сообщений и выбранную пользователем модель (`set_model/get_model`). Историю можно очистить командой `/clear` без сброса модели.
 * **Админ-команды:** через `admin_router` доступны `stats`, `users pending`, `models`, `refresh models`, `disable/enable <id>`.

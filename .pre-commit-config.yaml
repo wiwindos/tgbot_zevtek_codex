@@ -44,3 +44,17 @@ repos:
         name: mypy strict admin router
         files: ^bot/admin.py$
         args: [--strict, --ignore-missing-imports, --follow-imports=skip, --disable-error-code=misc]
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        entry: bash -c 'hadolint "$@" || true'
+        files: Dockerfile
+  - repo: local
+    hooks:
+      - id: dockerfilelint
+        name: dockerfilelint
+        entry: bash -c 'npx dockerfilelint "$@" || true'
+        language: node
+        types: ["dockerfile"]
+        files: Dockerfile

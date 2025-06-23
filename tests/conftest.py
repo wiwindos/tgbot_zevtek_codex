@@ -1,4 +1,6 @@
 # tests/conftest.py
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,3 +35,33 @@ def stub_provider_registry(monkeypatch):
 
     monkeypatch.setattr("services.llm_service.ProviderRegistry", DummyRegistry)
     monkeypatch.setenv("ENABLE_SCHEDULER", "0")
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "docker: tests that require local Docker daemon",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    ci = os.getenv("CI", "0") == "1"
+    try:
+        daemon_up = (
+            subprocess.call(
+                ["docker", "info"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            == 0
+        )
+    except FileNotFoundError:
+        daemon_up = False
+    if ci or not daemon_up:
+
+        skip_it = pytest.mark.skip(
+            reason="Docker tests skipped on CI or when daemon is absent"
+        )
+        for item in items:
+            if "docker" in item.keywords:
+                item.add_marker(skip_it)
