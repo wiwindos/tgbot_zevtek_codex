@@ -1,0 +1,8 @@
+{
+  "envs": {
+    "BOT_TOKEN": "",
+    "ADMIN_CHAT_ID": "",
+    "LOG_LEVEL": "INFO"
+  }
+}
+

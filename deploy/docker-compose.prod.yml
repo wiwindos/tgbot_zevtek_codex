@@ -1,0 +1,18 @@
+version: '3.9'
+services:
+  bot:
+    image: ghcr.io/example/tgbot:latest
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: Europe/Berlin
+    restart: always
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-m", "bot.main", "--ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+

@@ -90,3 +90,32 @@ Logs are emitted in JSON format using `structlog`. Example entry:
 Configure log level via `LOG_LEVEL` (default `INFO`). To send errors to Sentry
 set `SENTRY_DSN`. All uncaught exceptions are logged and a short message is sent
 to the chat defined by `ADMIN_CHAT_ID`.
+
+## Docker
+
+[![CI](https://github.com/your/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/your/repo/actions/workflows/ci.yml)
+[![GHCR](https://img.shields.io/badge/ghcr-image-blue)](https://ghcr.io/)
+[![Deploy to Railway](https://railway.app/button.svg)](https://railway.app/template/your)
+
+### Development
+
+```bash
+docker compose -f deploy/docker-compose.dev.yml up -d --build
+```
+
+Stop with:
+
+```bash
+docker compose -f deploy/docker-compose.dev.yml down
+```
+
+### Production
+
+Pull image from GHCR and run:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml up -d
+```
+
+Data is stored in `./data` volume.
+

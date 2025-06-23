@@ -70,10 +70,12 @@
 | **providers** | Абстракции LLM-провайдеров | `providers/base.py`, `gemini.py`, `mistral.py`, `dipseek.py`, `registry.py` |
 | **scheduler** | Периодические задачи обновления моделей | `scheduler/jobs.py`, `scheduler/runner.py` |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
-| **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
+| **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example` (переменные `BOT_TOKEN`, `ADMIN_CHAT_ID`, `TZ`)                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
 | **deps**     | Зависимости проекта             | `requirements.txt`                                               |
 | **logging**  | Структурированный вывод и перехват ошибок | `logging_config.py`, `bot/error_middleware.py` |
+| **deploy**   | Docker Compose и скрипты запуска | `deploy/docker-compose.dev.yml`, `deploy/docker-compose.prod.yml`, `railway.json` |
+| **scripts**  | Точки входа и утилиты       | `scripts/entrypoint.sh`, `Makefile` |
 
 ## 3. Навигация для агентов
 
@@ -87,3 +89,4 @@
 * **Обработка файлов:** `file_handlers.py` сохраняет присланные документы в `FILES_DIR` и передаёт их содержимое в LLM при поддержке модели.
 
 > **Важно:** актуализируйте этот файл при расширении модели данных или изменении структуры проекта.
+
