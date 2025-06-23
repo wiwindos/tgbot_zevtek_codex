@@ -87,3 +87,11 @@
 * **Обработка файлов:** `file_handlers.py` сохраняет присланные документы в `FILES_DIR` и передаёт их содержимое в LLM при поддержке модели.
 
 > **Важно:** актуализируйте этот файл при расширении модели данных или изменении структуры проекта.
+
+## 4. Деплой
+
+* Dockerfile формирует облегчённый образ на базе python:3.11-slim с non-root пользователем и healthcheck `/ping`.
+* `deploy/docker-compose.dev.yml` собирает образ локально, `docker-compose.prod.yml` использует образ из GHCR.
+* `scripts/entrypoint.sh` инициализирует БД перед запуском бота.
+* Makefile содержит цели `docker-build`, `docker-run`, `compose-up`, `compose-down`, `docker-push`.
+

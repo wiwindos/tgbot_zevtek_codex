@@ -1,5 +1,7 @@
 # Telegram Bot Skeleton
 
+![GHCR pulls](https://img.shields.io/badge/ghcr-pulls-blue)
+
 ## Development
 
 Install dependencies:
@@ -77,6 +79,21 @@ The chat defined in `ADMIN_CHAT_ID` gains extra commands:
 /admin enable <id>      - re-enable user access
 /admin models           - list stored models
 /admin refresh models   - pull latest models from providers
+```
+
+## Docker / Compose
+
+Quick start:
+
+```bash
+make docker-build
+make docker-run  # http://localhost:8080/ping
+```
+
+To run with Compose:
+
+```bash
+make compose-up
 ```
 
 ## Observability
