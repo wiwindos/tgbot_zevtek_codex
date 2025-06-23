@@ -107,7 +107,7 @@
 
 | Phase | Tasks                                                                                                                                               |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/deploy/test_image.py`* — docker image builds and `python main.py --ping` returns 0.                                                         |
+| **T** | (docker image test удалён из-за отсутствия Docker) |
 | **F** | 1. Write `Dockerfile` (python slim, non‑root).<br>2. `docker‑compose.yml` with named volume for `sqlite`.<br>3. Add CI stage to push image to GHCR. |
 | **I** | Update README deployment section.                                                                                                                   |
 | **P** | `ci(docker): automated image build & push`                                                                                                          |
