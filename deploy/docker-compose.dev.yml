@@ -1,0 +1,12 @@
+services:
+  bot:
+    build: ..
+    env_file: ../.env
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -m bot.main --ping || exit 1"]
+      interval: 30s
+      start_period: 30s
+      retries: 3
