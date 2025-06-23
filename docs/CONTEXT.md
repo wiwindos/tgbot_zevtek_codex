@@ -66,6 +66,7 @@
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
 | **deps**     | Зависимости проекта             | `requirements.txt`                                               |
+| **logging**  | Структурированный вывод и перехват ошибок | `logging_config.py`, `bot/error_middleware.py` |
 
 ## 3. Навигация для агентов
 

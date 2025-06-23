@@ -3,18 +3,25 @@ import argparse
 import asyncio
 import os
 
+import structlog
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 
+from bot import __version__
 from bot.admin import get_admin_router
 from bot.context_middleware import ContextMiddleware
 from bot.conversation import get_conversation_router
+from bot.error_middleware import ErrorMiddleware
 from bot.file_handlers import get_file_router
 from bot.middleware import AuthMiddleware
 from bot.utils import send_long_message
+from logging_config import configure_logging
 from scheduler.runner import configure, scheduler
 from services.context import ContextBuffer
+
+configure_logging()
+logger = structlog.get_logger()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -64,6 +71,7 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     buffer = ContextBuffer(max_messages=max_ctx)
     bot.context_buffer = buffer
     dp.context_buffer = buffer
+    dp.message.middleware(ErrorMiddleware())
     dp.message.outer_middleware(ContextMiddleware(buffer))
     dp.message.middleware(AuthMiddleware(admin_id))
     dp.include_router(get_admin_router(admin_id))
@@ -83,11 +91,12 @@ async def main():
     parser.add_argument("--ping", action="store_true", help="health check")
     args = parser.parse_args()
 
+    load_dotenv()
     if args.ping:
-        load_dotenv()
         print("pong")
         return 0
 
+    logger.info("bot_started", version=__version__)
     bot, dp = create_bot_and_dispatcher()
     await dp.start_polling(bot)
 
