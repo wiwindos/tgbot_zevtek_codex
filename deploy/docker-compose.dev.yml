@@ -1,0 +1,16 @@
+services:
+  bot:
+    build: .
+    image: tgbot:dev
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-m", "bot.main", "--ping"]
+      interval: 30s
+      start_period: 30s
+      retries: 3
+
