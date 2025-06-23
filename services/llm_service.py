@@ -45,6 +45,11 @@ async def generate_reply(
     req_id = await database.log_request(user["id"], prompt, model_str)
     if file_path:
         await database.log_file(req_id, file_path, mime or "")
-    text = await provider.generate(prompt, context=None, file_bytes=file_bytes)
+    history = _buffer.get(chat_id) if _buffer else []
+    text = await provider.generate(
+        prompt,
+        context=history,
+        file_bytes=file_bytes,
+    )
     await database.log_response(req_id, text)
     return text

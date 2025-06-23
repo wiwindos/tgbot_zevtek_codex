@@ -40,9 +40,21 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 
 | name    | supports_files | env vars                             |
 |---------|---------------|--------------------------------------|
-| gemini  | true          | `GEMINI_PROJECT`, `GEMINI_LOCATION`, `GEMINI_KEY` |
+| gemini  | true          | `GEMINI_API_KEY`, `GEMINI_PROXY` |
 | mistral | false         | `MISTRAL_API_KEY`                    |
 | dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |
+
+## Gemini via GenAISDK + Proxy
+
+1. Get your API key from [AI Studio](https://aistudio.google.com/).
+2. Configure proxy if needed:
+
+```bash
+/admin proxy set http://1.1.1.1:8080
+/admin proxy check
+```
+
+List available models with `/models`.
 
 ## Proxy for Gemini
 
@@ -53,7 +65,7 @@ Use admin commands to configure an HTTP/SOCKS proxy for Gemini:
 /admin proxy check
 ```
 
-The value is stored in the `settings` table under key `gemini_proxy`.
+The value is stored in the `config` table under key `GEMINI_PROXY`.
 
 ## File handling
 

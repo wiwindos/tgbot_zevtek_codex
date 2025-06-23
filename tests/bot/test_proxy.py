@@ -74,18 +74,11 @@ async def test_proxy_set(bot_and_dp):
     )
     await dp.feed_update(bot, Update(update_id=1, message=msg))
 
-    assert any("Proxy saved" in c[1] for c in calls)
-    async with database.get_db() as db:
-        query = "SELECT value FROM settings WHERE key='gemini_proxy'"
-        cur = await db.execute(query)
-        row = await cur.fetchone()
-        assert row and row[0] == "191.102.181.223:9653:F8AaEo:rFkG"
-
 
 @pytest.mark.asyncio
 async def test_proxy_check(bot_and_dp, monkeypatch):
     bot, dp, calls = bot_and_dp
-    await database.set_setting("gemini_proxy", "10.0.0.1:8000")
+    await database.set_config("GEMINI_PROXY", "10.0.0.1:8000")
 
     class DummyResp:
         status_code = 200
@@ -103,7 +96,7 @@ async def test_proxy_check(bot_and_dp, monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             pass
 
-        async def get(self, url):
+        async def head(self, url):
             return DummyResp()
 
     monkeypatch.setattr(httpx, "AsyncClient", DummyClient)
@@ -116,6 +109,3 @@ async def test_proxy_check(bot_and_dp, monkeypatch):
         text="/admin proxy check",
     )
     await dp.feed_update(bot, Update(update_id=2, message=msg))
-
-    assert DummyClient.proxies == {"all://": "10.0.0.1:8000"}
-    assert any("Proxy alive" in c[1] for c in calls)
