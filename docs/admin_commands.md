@@ -2,8 +2,8 @@
 
 ## Proxy for Gemini
 
-- `/admin proxy set <host:port:user:pass>` — save proxy string for Gemini requests.
-- `/admin proxy check` — perform a GET request to `https://generativelanguage.googleapis.com` using the stored proxy and show latency.
+- `/admin proxy set <url>` — save proxy string for Gemini requests.
+- `/admin proxy test` — uses `GeminiProvider.check_proxy()` to validate the proxy.
 
 Other admin commands are listed in README.
 

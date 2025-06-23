@@ -75,6 +75,17 @@ def bot_and_dp(monkeypatch, temp_db):
     monkeypatch.setattr("services.llm_service._registry", None)
 
     bot, dp = create_bot_and_dispatcher()
+
+    # insert available models for validation
+    async def _insert():
+        async with database.get_db() as db:
+            await db.execute(
+                "INSERT INTO models(provider, name, updated_at) "
+                "VALUES('m','mistral-8x7b','2024-01-01')"
+            )
+            await db.commit()
+
+    asyncio.get_event_loop().run_until_complete(_insert())
     calls = []
 
     async def fake_answer(self, text, **kwargs):

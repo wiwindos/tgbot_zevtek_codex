@@ -1,6 +1,7 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 
+from bot import database
 from bot.utils import send_long_message
 from services.context import ContextBuffer
 from services.llm_service import generate_reply, get_registry
@@ -32,8 +33,12 @@ def get_conversation_router(buffer: ContextBuffer) -> Router:
         if len(parts) != 2:
             await msg.answer("Usage: /model <name>")
             return
-        buffer.set_model(msg.from_user.id, parts[1])
-        await msg.answer("Model updated ✅")
+        name = parts[1]
+        if not await database.model_exists(name):
+            await msg.answer("Unknown model")
+            return
+        buffer.set_model(msg.from_user.id, name)
+        await msg.answer(f"Model switched to {name}")
 
     @router.message()
     async def dialog(message: types.Message) -> None:
