@@ -67,3 +67,15 @@ The chat defined in `ADMIN_CHAT_ID` gains extra commands:
 /admin models           - list stored models
 /admin refresh models   - pull latest models from providers
 ```
+
+## Observability
+
+Logs are emitted in JSON format using `structlog`. Example entry:
+
+```json
+{"event": "bot_started", "level": "info", "version": "0.1.0"}
+```
+
+Configure log level via `LOG_LEVEL` (default `INFO`). To send errors to Sentry
+set `SENTRY_DSN`. All uncaught exceptions are logged and a short message is sent
+to the chat defined by `ADMIN_CHAT_ID`.

@@ -30,3 +30,9 @@ repos:
       - id: mypy
         name: mypy admin
         files: ^bot/admin.py$
+      - id: mypy
+        name: mypy error middleware
+        files: ^bot/error_middleware.py$
+      - id: mypy
+        name: mypy logging config
+        files: ^logging_config.py$
