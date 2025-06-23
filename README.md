@@ -101,7 +101,7 @@ Run the bot locally:
 make compose-up
 ```
 
-Check health at `http://localhost:8080/ping`.
+Check container status with `docker compose ps`.
 
 Stop services:
 

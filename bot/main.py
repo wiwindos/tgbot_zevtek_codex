@@ -2,13 +2,13 @@
 import argparse
 import asyncio
 import os
+import sys
 
 import structlog
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 
-from bot import __version__, http_server
 from bot.admin import get_admin_router
 from bot.context_middleware import ContextMiddleware
 from bot.conversation import get_conversation_router
@@ -23,8 +23,6 @@ from services.llm_service import set_context_buffer
 
 configure_logging()
 logger = structlog.get_logger()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
 async def start_handler(msg: types.Message):
@@ -88,21 +86,23 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     return bot, dp
 
 
-async def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ping", action="store_true", help="health check")
+    parser.add_argument("--ping", action="store_true", help="health probe")
     args = parser.parse_args()
 
-    load_dotenv()
     if args.ping:
         print("pong")
-        return 0
+        sys.exit(0)
 
-    await http_server.start()
-    logger.info("bot_started", version=__version__)
+    load_dotenv()
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        raise RuntimeError("BOT_TOKEN is required (except --ping)")
+
     bot, dp = create_bot_and_dispatcher()
-    await dp.start_polling(bot)
+    asyncio.run(dp.start_polling(bot))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
