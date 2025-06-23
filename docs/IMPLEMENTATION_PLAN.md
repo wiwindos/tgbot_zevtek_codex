@@ -1,114 +1,74 @@
-### Итерация 9 — **Docker, Compose & One-Click Deploy**
+### Итерация 10 — **Polish & Docs Finish**
 
-*(обновлённый полный T – F – I – P-план; скорректирован под реальное дерево `wiwindos/tgbot_zevtek_codex`, при этом тяжёлые docker-тесты **никогда** не запускаются в GitHub Actions)*
-
----
-
-#### Текущее состояние репозитория (v `master`)
-
-| Факт                                                                                                                                                | Где видно                                                |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Имеется минимальный **Dockerfile** (копирует проект, запускает `python -m bot.main`), но: нет `HEALTHCHECK`, нет non-root-user, нет сетевого порта. | `Dockerfile`                                             |
-| `.dockerignore` отсутствует → контекст сборки огромный.                                                                                             | —                                                        |
-| Есть `deploy/docker-compose.dev.yml`, в котором задан устаревший ключ `version:`; health-check отсутствует.                                         | `deploy/…`                                               |
-| В CI workflow `build` выполняется `pytest`, куда входят 2 docker-heavy теста, из-за чего пайплайн падает (GitHub runner ≠ privileged).              | `.github/workflows/ci.yml`, `tests/deploy/test_image.py` |
-| Бот умеет отвечать на `--ping`, но внутри контейнера health-probe не настроен.                                                                      | `bot/main.py`                                            |
+*(финальный штрих проекта; план T – F – I – P, актуален для `wiwindos/tgbot_zevtek_codex` после Iter 9)*
 
 ---
 
-## 1  T — **Test first**
+#### Текущее состояние репозитория
 
-> Цель — оставить docker-тесты полезными локально, но гарантированно **пропустить** их в GitHub CI.
-
-| Шаг | Действие                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.1 | **Маркируем** оба деплой-теста: в начале файлов `tests/deploy/test_image.py` и `test_compose.py` добавить `@pytest.mark.docker`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 1.2 | **Глобальный auto-skip** в `tests/conftest.py`:  `python<br>import os, pytest, subprocess<br><br>def pytest_configure(config):<br>    config.addinivalue_line(\"markers\", \"docker: tests that require local Docker daemon\")<br><br>def pytest_collection_modifyitems(config, items):<br>    ci = os.getenv(\"CI\", \"0\") == \"1\"  # GitHub sets CI=1<br>    daemon_up = subprocess.call([\"docker\", \"info\"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0<br>    if ci or not daemon_up:<br>        skip_it = pytest.mark.skip(reason=\"Docker tests skipped on CI or when daemon is absent\")<br>        for item in items:<br>            if \"docker\" in item.keywords:<br>                item.add_marker(skip_it)<br>` |
-| 1.3 | **Правим сами тесты** (чтобы проходили локально):<br>• убрать `--rm` из `docker run`;<br>• health-status проверять через `docker inspect`;<br>• после проверки контейнер останавливать и удалять вручную.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-
-> ✅ На CI переменная `CI=1` → оба теста будут отмечены `skipped`, отчёт `pytest` покажет «skipped=2, failed=0».
-
----
-
-## 2  F — **Feature**
-
-| №       | Задача                                                                                                                                                                                                                                                                                                                                                                                                      | Файл / артефакт               |                                                                                                                         |              |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------ |
-| **2.1** | **Dockerfile (production-grade)**<br>  \* python:3.11-slim.<br>  \* `WORKDIR /app`.<br>  \* `adduser --disabled-password --gecos \"\" bot` → `USER bot`.<br>  \* Кешируем слой `pip install -r requirements.txt` до `COPY . .`.<br>  \* Открываем порт `8080`.<br>  \* \`HEALTHCHECK --interval=30s --start-period=30s --retries=3 CMD python -m bot.main --ping                                            |                               | exit 1`.<br>  * `ENTRYPOINT \["python", "-m", "bot.main"]`.<br>  * `LABEL org.opencontainers.image.version=\$VERSION\`. | `Dockerfile` |
-| **2.2** | **`.dockerignore`**: `__pycache__/`, `tests/`, `docs/`, `.venv/`, `*.log`, `*.db`, `.env`, `.git`.                                                                                                                                                                                                                                                                                                          | `.dockerignore`               |                                                                                                                         |              |
-| **2.3** | **Compose конфиги**<br>  `deploy/docker-compose.dev.yml` (build локально) и `docker-compose.prod.yml` (цитирует образ из GHCR).<br>  Общие настройки:<br>  \* volume `./data:/app/data`;<br>  \* `env_file: .env` (prod → `environment:`);<br>  \* `restart: unless-stopped / always`;<br>  \* health-check такой же, как в Dockerfile;<br>  \* порт `8080:8080`.<br>  Ключ `version:` удалён (Compose V2). | `deploy/…`                    |                                                                                                                         |              |
-| **2.4** | **Startup-script** `scripts/entrypoint.sh`:<br>`python -m bot.database --init && exec python -m bot.main`.                                                                                                                                                                                                                                                                                                  | `scripts/entrypoint.sh`       |                                                                                                                         |              |
-| **2.5** | **Makefile**: цели `docker-build`, `docker-run`, `compose-up`, `compose-down`, `docker-push`.                                                                                                                                                                                                                                                                                                               | `Makefile`                    |                                                                                                                         |              |
-| **2.6** | **GitHub Actions — минимальный docker-publish**<br>  \* Новый job `docker-publish` **только** при пуше тегов `v*`.<br>  \* `docker/login-action` → GHCR.<br>  \* `docker/build-push-action` с тегами `${{ github.ref_name }}` и `latest`.<br>  \* **Без** запуска контейнера или compose-integration.                                                                                                       | `.github/workflows/ci.yml`    |                                                                                                                         |              |
-| **2.7** | **README & docs**: раздел «Docker / Compose», шаги деплоя, badge GHCR pulls.                                                                                                                                                                                                                                                                                                                                | `README.md`, `docs/deploy.md` |                                                                                                                         |              |
-| **2.8** | **pre-commit**: добавить `hadolint` (опционально), но ошибка линта не блокирует CI.                                                                                                                                                                                                                                                                                                                         |                               |                                                                                                                         |              |
+| Факт                                                                              | Где видно                             |
+| --------------------------------------------------------------------------------- | ------------------------------------- |
+| Функциональность завершена (бот, провайдеры, прокси, контекст, Docker, CI).       | `bot/*`, `providers/*`, `scheduler/*` |
+| Типы проставлены частично; `mypy` запускается в *silent-mode* (errors ≠ CI-fail). | `.github/workflows/ci.yml`            |
+| Покрытие тестами ≈ 78 % (unit-тесты + docker-тесты локально).                     | `pytest --cov` (локально)             |
+| Документация: README, `docs/deploy.md`; нет API-референса и CHANGELOG.            | `README.md`, `docs/*`                 |
+| Лицензия MIT, но нет фай-ла `CONTRIBUTING.md`, issue/PR templates.                | `LICENSE`                             |
+| Версионирование в коде отсутствует (`__version__` не задан).                      | —                                     |
 
 ---
 
-## 3  I — **Integrate**
+## 1 T — **Test first**
 
-| Направление  | Шаги                                                                                                            |
-| ------------ | --------------------------------------------------------------------------------------------------------------- |
-| Линтеры      | Убедиться, что `Dockerfile`-хук `hadolint` и формат-хук `dockerfilelint` добавлены в `.pre-commit-config.yaml`. |
-| CI           | Проверить, что задан `permissions: packages: write` для job `docker-publish` (иначе push в GHCR не пройдёт).    |
-| Документация | В `README` добавить quick-start:  `bash\nmake docker-build\nmake docker-run  # localhost:8080/ping\n`           |
+| № | Тест-задача                                                            | Проверка                                                                            |
+| - | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1 | **Критический путь “/start ➜ /model ➜ file upload”** *(e2e в 1 тесте)* | Использовать `pytest` + `aiogram-testing` client: сценарий проходит без исключений. |
+| 2 | **Static-type gate**                                                   | Запускаем `mypy --strict .` в отдельном `pytest`-тесте и ассертим что exit-code 0.  |
+| 3 | **Coverage gate**                                                      | `pytest --cov` должен выдавать `>= 85 %`; если ниже → тест падает.                  |
+
+(В CI эти проверки станут частью workflow.)
 
 ---
 
-## 4  P — **Push**
+## 2 F — **Feature / Финальный функционал**
+
+| №   | Задача                                                                                                | Где правим                                                    |
+| --- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 2.1 | **Полная typing-аннотация** (`mypy --strict`): слой `services`, `bot/admin_router.py`, `providers/*`. | правки файлов                                                 |
+| 2.2 | **`__init__.py` → `__version__`**; semantic-версия берётся из `pyproject.toml` или `version.txt`.     | `bot/__init__.py`                                             |
+| 2.3 | **Coverage badge** (Codecov) + отчёт.                                                                 | `.github/workflows/ci.yml`, `README.md`                       |
+| 2.4 | **ruff** как быстрый линтер (заменяет flake8 + isort); конфиг `pyproject.toml`.                       | `.pre-commit-config.yaml`, `ci.yml`                           |
+| 2.5 | **Sphinx или MkDocs** билд API-docs: autogenerated from docstrings; GitHub Pages publish via `docs/`. | `docs/conf.py` или `mkdocs.yml`                               |
+| 2.6 | **CHANGELOG.md** (Keep a Changelog format), autopopulate при релизах.                                 | `CHANGELOG.md`                                                |
+| 2.7 | **`CONTRIBUTING.md` + issue/PR templates** (GitHub).                                                  | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` |
+| 2.8 | **Semantic Release tag helper** (`semantic-release` or `git-cliff`) to bump version & changelog.      | `.github/workflows/release.yml`                               |
+
+---
+
+## 3 I — **Integrate**
+
+| Направление          | Шаги                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CI**               | *Обновить* `ci.yml`:<br>`yaml\n- run: ruff check .\n- run: mypy --strict .\n- run: pytest -m \"not docker\" --cov=.\n- run: codecov -t ${{ secrets.CODECOV_TOKEN }}\n` |
+| **Pre-commit**       | Hook-сет: `ruff-format`, `mypy`, `black` (со строгим line-length = 100).                                                                                               |
+| **Docs publish**     | Job `gh-pages`: `mkdocs build` → `peaceiris/actions-gh-pages@v4`.                                                                                                      |
+| **Badges**           | CI status, coverage %, Docker pulls, GHCR size.                                                                                                                        |
+| **README**           | Добавить секции: **Features**, **Quick Start**, **Proxy setup**, **Admin Commands**, **FAQ**.                                                                          |
+| **Release workflow** | на тег `v*.*.*` — build, push image, upload docs, create GitHub Release с CHANGELOG.                                                                                   |
+
+---
+
+## 4 P — **Push**
 
 ```bash
-git add Dockerfile .dockerignore deploy/ scripts/ Makefile \
-        tests/conftest.py tests/deploy/*.py .github/workflows/ci.yml \
-        README.md docs/deploy.md .pre-commit-config.yaml
-git commit -m "build(docker): prod-grade image & compose, skip docker tests on CI, add GHCR publish"
+git add .
+git commit -m "docs: complete typing, coverage ≥85 %, mkdocs site & release workflow"
 git push origin master
 ```
 
----
+После merge:
 
-### ✔️ Ожидаемый результат
+* **GitHub Actions** выполняет lint → type-check → tests (coverage ≥ 85 %) → CI зелёный.
+* **Docs site** доступен по GitHub Pages.
+* Следующий тег `v1.0.0` автоматически соберёт образ и сформирует релиз-ноты.
 
-| Метрика            | Что видит разработчик / CI                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------------------------- |
-| **GitHub Actions** | `pytest` ➜ все unit-тесты PASS, docker-метки `skipped`; job `docker-publish` запускается только на теги. |
-| **Локально**       | `pytest -m docker` проходит: образ собирается, health-status = healthy, compose-сервис поднимается.      |
-| **Образ**          | non-root, лёгкий (≈120 MB), health-check `/ping`, метка версии.                                          |
-| **Compose**        | один файл для dev, один для prod; оба томят `./data`, оба проверяют health.                              |
-| **Документация**   | чёткие шаги «build → run» и «compose-up».                                                                |
-
-> Теперь и CI зелёный, и полный Docker/Compose-стек готов к одно-кликовому деплою (Railway, Fly.io, VPS).
-
-попробуй реализовать еще это: ## Дополнение к Iter 9: как гарантированно убрать docker-тесты из CI
-
-*(проблема: контейнер помечается **unhealthy** → оба deploy-теста валят GitHub Actions)*
-
-### Почему skip-маркер не сработал
-
-1. **В тестах нет `@pytest.mark.docker`** – маркер добавлен только в `conftest.py`.
-2. Workflow по-прежнему запускает голый `pytest`, поэтому докер-тесты попадают в сборку.
-
-### Исправление (минимальный diff)
-
-| Шаг          | Файл                                                           | Изменение                                                                                  |
-| ------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **1**        | `tests/deploy/test_image.py`<br>`tests/deploy/test_compose.py` | добавить в самый верх: <br>`import pytest`<br>`pytestmark = pytest.mark.docker`            |
-| **2**        | `pytest.ini` *(создать)*                                       | `ini<br>[pytest]<br>markers =<br>    docker: tests that require a local Docker daemon<br>` |
-| **3**        | `.github/workflows/ci.yml`                                     | заменить команду запуска тестов: <br>`run: pytest -m "not docker" -q`                      |
-| **4 (опц.)** | `conftest.py`                                                  | оставить auto-skip, чтобы локально тоже пропускалось, когда `docker info` недоступен.      |
-
-```yaml
-# фрагмент workflow
-- name: Run unit tests (skip docker)
-  run: |
-    pip install -r requirements.txt
-    pytest -m "not docker" -q
-```
-
-### Итог
-
-* **CI** видит 24 unit-теста → зелёный.
-* **Docker-тесты** остались в репозитории для локальной проверки:
-  `pytest -m docker tests/deploy`.
-
-*(Остальная часть плана Iter 9 — Dockerfile, compose-файлы, publish в GHCR — остаётся без изменений.)*
+Проект считается «Production-ready».
