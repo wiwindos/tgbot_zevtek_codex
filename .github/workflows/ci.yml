@@ -11,6 +11,10 @@ jobs:
           python-version: '3.12'
       - name: Install deps
         run: pip install -r requirements.txt pre-commit "httpx[socks]"
+      - name: Install hadolint
+        run: |
+          wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod +x /usr/local/bin/hadolint
       - name: DB tests
         run: pytest -q tests/db
       - name: Lint
