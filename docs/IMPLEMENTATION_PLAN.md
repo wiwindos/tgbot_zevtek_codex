@@ -1,40 +1,35 @@
-Ниже — твой обновлённый план Итерации 9, только текстовые инструкции (без вставок кода), с доработками для стабильного прохождения тестов и корректной CI:
-
----
-
 ### Итерация 9 — Docker, Compose & One-Click Deploy
 
-*T – F – I – P-план; сверяется с текущим состоянием репозитория после Iter 8*
+*T – F – I – P-план; сверяется с репо после Iter 8*
 
 ---
 
-#### Текущее состояние репозитория
+#### Актуальное состояние
 
-* Есть базовый Dockerfile (python:3.11-slim, копирует проект, запускает `bot.main`).
-* Нет файла `.dockerignore`.
-* Нет каталога `deploy` с docker-compose.
-* CI собирает образ, но не тестирует запуск контейнера и не пушит его.
-* Отсутствуют Make-файл и кнопка «Deploy to …» в README.
+* Базовый Dockerfile без healthcheck и без неправавого пользователя.
+* Отсутствует `.dockerignore`.
+* В `deploy/docker-compose.dev.yml` указан устаревший ключ `version:` (Compose V2 игнорирует его и ругается).
+* Тесты падают:
+
+  1. При остановке образа через `docker stop` (контейнер уже удалён через `--rm`).
+  2. Сервис по `docker-compose` не помечается `healthy` (нет корректного healthcheck или слушателя на `/ping`).
 
 ---
 
 ## 1. T — Test first
 
 1. **Пропуск при отсутствии Docker-демона**
-   Добавить в начало теста-файла автопроверку `docker info` и `pytest.skip`, если демон не запущен.
-2. **Тест сборки и запуска образа**
+   — В начале теста-файла авто-фикстура, вызывающая `docker info` и `pytest.skip`, если демона нет.
+2. **Тест «image builds & runs»**
 
-   * Собирать образ с тегом `tgbot:test`.
-   * Запускать контейнер в фоне с обязательными переменными окружения (`BOT_TOKEN`, `ADMIN_CHAT_ID`, `LOG_LEVEL`).
-   * Ожидать в логах появления маркера старта (например, `bot_started`).
-   * Если в образе есть HEALTHCHECK — дополнительно проверять статус `healthy`.
-   * Контейнер удаляется автоматически (`--rm`).
-3. **Тест запуска через Docker Compose**
+   * **Убрать опцию `--rm`** при старте тестового контейнера, чтобы он дожидался явной остановки.
+   * После проверки логов и/или healthcheck останавливать контейнер строго через `docker stop` + `docker rm`.
+   * Делать проверку healthcheck (если задан) через `docker inspect --format='{{.State.Health.Status}}'`.
+3. **Тест «docker-compose up»**
 
-   * Поднимать `docker compose -f deploy/docker-compose.dev.yml up -d --build`.
-   * Проверять, что сервис `bot` становится `healthy`.
-   * Проверять, что на хосте появился том `./data`.
-   * Останавливать и удалять всё через `docker compose down`.
+   * **Удалить ключ `version:`** из `docker-compose.dev.yml`, чтобы не получалось предупреждение.
+   * Добавить service-level healthcheck, который ждёт HTTP 200 от `/ping`.
+   * В тесте после `up -d --build` проверять именно статус `healthy` у контейнера, а не просто `running`.
 
 ---
 
@@ -42,81 +37,69 @@
 
 1. **Dockerfile**
 
-   * Перейти на образ `python:3.11-slim`.
-   * Ввести ARG `BUILD_ENV=prod` (для разделения dev/prod установки зависимостей).
-   * Создать неправавого пользователя `bot` и переключиться на него.
-   * Кешировать слой с установкой зависимостей (requirements или poetry).
-   * Скопировать только нужные файлы (с учётом `.dockerignore`).
-   * Открыть порт 8080.
-   * Добавить HEALTHCHECK, который на `/ping` возвращает успешный код.
-   * Установить LABEL с версией образа из переменной среды.
+   * Переход на `python:3.11-slim`.
+   * `ARG BUILD_ENV` для разделения установки зависимостей (dev vs prod).
+   * Создание неправавого пользователя `bot` и переключение на него.
+   * Кеширование слоя установки pip-зависимостей.
+   * Открытие порта `8080`.
+   * Добавление `HEALTHCHECK`, который посылает GET на `/ping` и ожидает 200.
+   * `LABEL org.opencontainers.image.version=$VERSION`.
 2. **.dockerignore**
+   — Выключить из контекста сборки `__pycache__`, `tests/`, `.venv/`, `*.log`, `*.db`, `.env`.
+3. **deploy/docker-compose.dev.yml**
 
-   * Исключить каталоги `__pycache__`, `tests`, `.venv`, файлы `*.log`, `*.db`, `.env` и прочее лишнее.
-3. **docker-compose.dev.yml**
+   * **Убрать поле `version:`** (Compose V2 сам понимает схему).
+   * Настроить сервис `bot` с:
 
-   * Описать сервис `bot`, который:
+     * `build: .` и монтированием `./data:/app/data`.
+     * `env_file: .env` и `restart: unless-stopped`.
+     * Публикацией порта `8080:8080`.
+     * **Healthcheck**, проверяющим HTTP 200 на `/ping`.
+4. **deploy/docker-compose.prod.yml**
 
-     * строится из текущей директории;
-     * монтирует том `./data:/app/data`;
-     * подхватывает переменные из файла `.env`;
-     * перезапускается при сбое;
-     * выставляет healthcheck по HTTP `/ping`.
-4. **docker-compose.prod.yml**
+   * Сервис `bot` на уже запушенном образе:
 
-   * Тот же сервис, но:
+     * Переменные через `environment` (включая `TZ=Europe/Berlin`).
+     * `restart: always`, публикация порта и такой же healthcheck.
+5. **Entrypoint**
+   — Вынести в `scripts/entrypoint.sh` логику инициализации БД и старта приложения; подключить через `ENTRYPOINT`.
+6. **CI (GitHub Actions)**
 
-     * использует заранее запушенный образ из GHCR;
-     * получает переменные через `environment`;
-     * рестарт всегда;
-     * задаёт `TZ=Europe/Berlin`.
-5. **Entrypoint-script**
+   * Job **docker-test**:
 
-   * Вынести в `scripts/entrypoint.sh` последовательность инициализации БД и старта приложения;
-   * Сделать скрипт исполняемым и подключить через `ENTRYPOINT`.
-6. **GitHub Actions: build & test & publish**
+     * Запустить сборку образа.
+     * Запустить контейнер без `--rm`, дождаться `bot_started` в логах или статуса `healthy`.
+     * Остановить и удалить контейнер вручную.
+     * Поднять `docker compose -f deploy/docker-compose.dev.yml up -d --build`, проверить health и том `./data`, затем `down`.
+   * Job **docker-publish** (needs: docker-test):
 
-   * Добавить job для тестирования образа и compose (с пропуском при отсутствии Docker).
-   * Обеспечить в job доступ к Docker Buildx (multi-arch).
-   * После успешных тестов — job для логина в GHCR и пуша образа:
-
-     * пушить на SHA-тег агитированно;
-     * при пуше тегов — дополнительно тегировать `latest`.
+     * Логин в GHCR.
+     * Сборка с тегом SHA и пуш.
+     * На тэговые пуши — дополнительный `latest`.
+   * Включить `docker/setup-buildx-action` (и по желанию `docker/setup-qemu-action`).
 7. **Badges & Deploy button**
 
-   * В README разместить бейджи CI и GHCR (pulls/size).
-   * Добавить «Deploy to Railway» (или generic) кнопку с настройкой `railway.json`.
+   * В README: бейдж CI, бейдж GHCR size/pulls.
+   * Кнопка «Deploy to Railway» или generic (с `railway.json`).
 8. **Makefile**
 
-   * Добавить цели:
-
-     * поднять dev-compose;
-     * опустить dev-compose;
-     * собрать локальный образ;
-     * запушить образ в GHCR.
+   * Цели: `compose-up`, `compose-down`, `docker-build`, `docker-push`.
 9. **ENV изменения**
-
-   * Везде, где нужно, прописать `TZ=Europe/Berlin`.
+   — Везде прописать `TZ=Europe/Berlin`.
 10. **Version label**
-
-* В Dockerfile и метаданных образа проставить версию через переменную `$VERSION`.
+    — Пробросить `VERSION` в Dockerfile и поставить `LABEL org.opencontainers.image.version=$VERSION`.
 
 ---
 
 ## 3. I — Integrate
 
-* **README**
-  — Описать раздел «Docker / Compose»: команды запуска dev и prod, переменные, том `./data`.
-* **pre-commit**
-  — Подключить `hadolint` для линтинга Dockerfile.
-* **CI**
-  — Убедиться, что прописаны `docker/setup-buildx-action` (и при необходимости `docker/setup-qemu-action`).
-* **Docs**
-  — В `docs/deploy.md` привести пошаговый гайд: клонирование, копирование `.env`, `make compose-up`, проверка `/ping`, остановка.
+* **README**: подробно описать команды и переменные для dev/prod.
+* **pre-commit**: добавить linтинг Dockerfile через hadolint.
+* **CI**: убедиться, что Buildx настроен, и healthcheck/job пропускает тесты только при реально успешном образе.
+* **Docs**: в `docs/deploy.md` шаги: clone → cp .env → `make compose-up` → проверка `/ping` → `make compose-down`.
 
 ---
 
 ## 4. P — Push
 
-* Закоммитить все изменения с кратким сообщением о готовности Docker, Compose и CI.
-* Сделать `git push origin master`.
+Коммит «ci(docker): исправил compose, healthcheck и тесты; добавил non-root, ENTRYPOINT и GHCR publish» и пуш в `main`.
