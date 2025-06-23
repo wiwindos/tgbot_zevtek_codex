@@ -78,3 +78,37 @@ git push origin master
 | **Документация**   | чёткие шаги «build → run» и «compose-up».                                                                |
 
 > Теперь и CI зелёный, и полный Docker/Compose-стек готов к одно-кликовому деплою (Railway, Fly.io, VPS).
+
+попробуй реализовать еще это: ## Дополнение к Iter 9: как гарантированно убрать docker-тесты из CI
+
+*(проблема: контейнер помечается **unhealthy** → оба deploy-теста валят GitHub Actions)*
+
+### Почему skip-маркер не сработал
+
+1. **В тестах нет `@pytest.mark.docker`** – маркер добавлен только в `conftest.py`.
+2. Workflow по-прежнему запускает голый `pytest`, поэтому докер-тесты попадают в сборку.
+
+### Исправление (минимальный diff)
+
+| Шаг          | Файл                                                           | Изменение                                                                                  |
+| ------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **1**        | `tests/deploy/test_image.py`<br>`tests/deploy/test_compose.py` | добавить в самый верх: <br>`import pytest`<br>`pytestmark = pytest.mark.docker`            |
+| **2**        | `pytest.ini` *(создать)*                                       | `ini<br>[pytest]<br>markers =<br>    docker: tests that require a local Docker daemon<br>` |
+| **3**        | `.github/workflows/ci.yml`                                     | заменить команду запуска тестов: <br>`run: pytest -m "not docker" -q`                      |
+| **4 (опц.)** | `conftest.py`                                                  | оставить auto-skip, чтобы локально тоже пропускалось, когда `docker info` недоступен.      |
+
+```yaml
+# фрагмент workflow
+- name: Run unit tests (skip docker)
+  run: |
+    pip install -r requirements.txt
+    pytest -m "not docker" -q
+```
+
+### Итог
+
+* **CI** видит 24 unit-теста → зелёный.
+* **Docker-тесты** остались в репозитории для локальной проверки:
+  `pytest -m docker tests/deploy`.
+
+*(Остальная часть плана Iter 9 — Dockerfile, compose-файлы, publish в GHCR — остаётся без изменений.)*
