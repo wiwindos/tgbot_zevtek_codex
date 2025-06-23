@@ -19,6 +19,7 @@ from bot.utils import send_long_message
 from logging_config import configure_logging
 from scheduler.runner import configure, scheduler
 from services.context import ContextBuffer
+from services.llm_service import set_context_buffer
 
 configure_logging()
 logger = structlog.get_logger()
@@ -71,6 +72,7 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     buffer = ContextBuffer(max_messages=max_ctx)
     bot.context_buffer = buffer
     dp.context_buffer = buffer
+    set_context_buffer(buffer)
     dp.message.middleware(ErrorMiddleware())
     dp.message.outer_middleware(ContextMiddleware(buffer))
     dp.message.middleware(AuthMiddleware(admin_id))

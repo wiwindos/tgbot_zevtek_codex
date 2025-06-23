@@ -42,6 +42,17 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 | mistral | false         | `MISTRAL_API_KEY`                    |
 | dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |
 
+## Proxy for Gemini
+
+Use admin commands to configure an HTTP/SOCKS proxy for Gemini:
+
+```bash
+/admin proxy set host:port:user:pass
+/admin proxy check
+```
+
+The value is stored in the `settings` table under key `gemini_proxy`.
+
 ## File handling
 
 Uploaded documents are saved to the directory defined by `FILES_DIR` (default
