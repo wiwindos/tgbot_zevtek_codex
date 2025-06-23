@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  bot:
+    image: ghcr.io/OWNER/tgbot:latest
+    volumes:
+      - ../data:/app/data
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
+      LOG_LEVEL: ${LOG_LEVEL}
+      TZ: Europe/Berlin
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-m", "bot.main", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

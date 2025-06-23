@@ -19,3 +19,25 @@ jobs:
         run: pytest -q
       - name: Docker dry-run
         run: docker build -t bot:test .
+
+  docker-publish:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/tgbot:${{ github.sha }} .
+          docker push ghcr.io/${{ github.repository_owner }}/tgbot:${{ github.sha }}
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            docker tag ghcr.io/${{ github.repository_owner }}/tgbot:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/tgbot:latest
+            docker push ghcr.io/${{ github.repository_owner }}/tgbot:latest
+          fi

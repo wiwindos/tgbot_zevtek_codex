@@ -67,6 +67,7 @@
 | **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
 | **deps**     | Зависимости проекта             | `requirements.txt`                                               |
 | **logging**  | Структурированный вывод и перехват ошибок | `logging_config.py`, `bot/error_middleware.py` |
+| **deploy**  | Docker compose configs и entrypoint | `deploy/docker-compose.dev.yml`, `deploy/docker-compose.prod.yml`, `scripts/entrypoint.sh` |
 
 ## 3. Навигация для агентов
 
