@@ -1,0 +1,16 @@
+services:
+  bot:
+    image: ghcr.io/${REPOSITORY:-myorg/tgbot}:latest
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-m", "bot.main", "--ping"]
+      interval: 30s
+      start_period: 30s
+      retries: 3
+
