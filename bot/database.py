@@ -9,12 +9,13 @@ models(id PK, provider, name, updated_at)
 ```
 """
 
+import os
 import pathlib
 from contextlib import asynccontextmanager
 
 import aiosqlite
 
-DB_PATH = pathlib.Path("bot.db")
+DB_PATH = pathlib.Path(os.getenv("DB_PATH", "data/bot.db"))
 
 CREATE_USERS = """
 CREATE TABLE IF NOT EXISTS users(

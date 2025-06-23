@@ -1,0 +1,17 @@
+services:
+  bot:
+    image: ghcr.io/example/tgbot:latest
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
+      TZ: Europe/Berlin
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5

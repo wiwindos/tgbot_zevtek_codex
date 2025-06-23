@@ -1,5 +1,7 @@
 # Telegram Bot Skeleton
 
+![CI](https://github.com/username/repo/actions/workflows/ci.yml/badge.svg)
+
 ## Development
 
 Install dependencies:
@@ -90,3 +92,21 @@ Logs are emitted in JSON format using `structlog`. Example entry:
 Configure log level via `LOG_LEVEL` (default `INFO`). To send errors to Sentry
 set `SENTRY_DSN`. All uncaught exceptions are logged and a short message is sent
 to the chat defined by `ADMIN_CHAT_ID`.
+
+## Docker
+
+Run the bot locally:
+
+```bash
+make compose-up
+```
+
+Check health at `http://localhost:8080/ping`.
+
+Stop services:
+
+```bash
+make compose-down
+```
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
