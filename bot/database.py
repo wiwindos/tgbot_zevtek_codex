@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS files(
 );
 """
 
+CREATE_SETTINGS = """
+CREATE TABLE IF NOT EXISTS settings(
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+"""
+
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -73,6 +80,7 @@ async def init_db():
         await db.execute(CREATE_RESPONSES)
         await db.execute(CREATE_MODELS)
         await db.execute(CREATE_FILES)
+        await db.execute(CREATE_SETTINGS)
         await db.commit()
 
 
@@ -110,5 +118,22 @@ async def log_file(request_id: int, path: str, mime: str) -> None:
         await db.execute(
             "INSERT INTO files(request_id, path, mime) VALUES(?, ?, ?)",
             (request_id, path, mime),
+        )
+        await db.commit()
+
+
+async def get_setting(key: str) -> str | None:
+    async with get_db() as db:
+        query = "SELECT value FROM settings WHERE key=?"
+        cur = await db.execute(query, (key,))
+        row = await cur.fetchone()
+        return row[0] if row else None
+
+
+async def set_setting(key: str, value: str) -> None:
+    async with get_db() as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)",
+            (key, value),
         )
         await db.commit()

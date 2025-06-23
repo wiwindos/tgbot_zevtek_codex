@@ -1,3 +1,6 @@
+import time
+
+import httpx
 from aiogram import F, Router, types
 from aiogram.filters import Command
 
@@ -60,6 +63,25 @@ def get_admin_router(admin_chat_id: int) -> Router:
                 notify = "Доступ временно закрыт"
             await msg.bot.send_message(tg_id, notify)
             await msg.answer("Готово")
+        elif cmd == "proxy" and len(parts) >= 4 and parts[2] == "set":
+            proxy = parts[3]
+            await database.set_setting("gemini_proxy", proxy)
+            await msg.answer("Proxy saved ✅")
+        elif cmd == "proxy" and len(parts) >= 3 and parts[2] == "check":
+            proxy = await database.get_setting("gemini_proxy")
+            if not proxy:
+                await msg.answer("Proxy not set")
+            else:
+                start = time.perf_counter()
+                proxies = {"all://": proxy}
+                url = "https://generativelanguage.googleapis.com"
+                async with httpx.AsyncClient(proxies=proxies) as client:
+                    resp = await client.get(url)
+                ms = int((time.perf_counter() - start) * 1000)
+                if resp.status_code < 400:
+                    await msg.answer(f"Proxy alive 🟢 ({ms} ms)")
+                else:
+                    await msg.answer("Proxy error ⛔")
         elif cmd == "models":
             async with database.get_db() as db:
                 cur = await db.execute(

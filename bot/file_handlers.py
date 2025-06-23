@@ -15,7 +15,7 @@ from services.llm_service import generate_reply, get_registry
 FILES_DIR = Path(os.getenv("FILES_DIR", "./data/files"))
 FILES_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_MODEL = "gemini-pro"
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-pro")
 
 
 def get_file_router() -> Router:
@@ -31,7 +31,9 @@ def get_file_router() -> Router:
         async with aiofiles.open(dest, "rb") as f:
             data = await f.read()
         registry = get_registry()
-        provider = registry.get(DEFAULT_MODEL.split("-")[0])
+        selected = msg.bot.context_buffer.get_model(msg.from_user.id)
+        model = selected or DEFAULT_MODEL
+        provider = registry.get(model.split("-")[0])
         if not provider.supports_files:
             await send_long_message(
                 msg.bot,
@@ -42,7 +44,7 @@ def get_file_router() -> Router:
         reply = await generate_reply(
             msg.from_user.id,
             prompt="",
-            model=DEFAULT_MODEL,
+            model=model,
             file_bytes=data,
             file_path=str(dest),
             mime=msg.document.mime_type or "application/octet-stream",
