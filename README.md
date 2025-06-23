@@ -1,4 +1,6 @@
 # Telegram Bot Skeleton
+![CI](https://github.com/OWNER/tgbot_zevtek_codex/actions/workflows/ci.yml/badge.svg) ![GHCR](https://img.shields.io/badge/container-ghcr.io-blue)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
 
 ## Development
 
@@ -79,3 +81,21 @@ Logs are emitted in JSON format using `structlog`. Example entry:
 Configure log level via `LOG_LEVEL` (default `INFO`). To send errors to Sentry
 set `SENTRY_DSN`. All uncaught exceptions are logged and a short message is sent
 to the chat defined by `ADMIN_CHAT_ID`.
+
+## Docker / Compose
+
+This repo provides a Dockerfile and compose configs.
+To run locally:
+
+```bash
+cp .env.example .env
+make compose-up
+```
+
+Stop services:
+
+```bash
+make compose-down
+```
+
+For production deploy use `deploy/docker-compose.prod.yml` with an image from GHCR. All data persists in `./data`.
