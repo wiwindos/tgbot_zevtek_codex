@@ -8,7 +8,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 
-from bot import __version__
+from bot import __version__, http_server
 from bot.admin import get_admin_router
 from bot.context_middleware import ContextMiddleware
 from bot.conversation import get_conversation_router
@@ -98,6 +98,7 @@ async def main():
         print("pong")
         return 0
 
+    await http_server.start()
     logger.info("bot_started", version=__version__)
     bot, dp = create_bot_and_dispatcher()
     await dp.start_polling(bot)
