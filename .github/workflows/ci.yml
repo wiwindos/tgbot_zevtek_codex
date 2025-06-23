@@ -19,3 +19,33 @@ jobs:
         run: pytest -q
       - name: Docker dry-run
         run: docker build -t bot:test .
+
+  docker-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        run: docker build -t bot:test .
+      - name: Run container
+        run: |
+          CID=$(docker run -d bot:test)
+          for i in {1..20}; do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' "$CID" || true)
+            [ "$STATUS" = "healthy" ] && break
+            sleep 3
+          done
+          docker stop "$CID"
+          docker rm "$CID"
+      - name: Compose up
+        run: |
+          docker compose -f deploy/docker-compose.dev.yml up -d --build
+          CID=$(docker compose -f deploy/docker-compose.dev.yml ps -q bot)
+          for i in {1..20}; do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' "$CID" || true)
+            [ "$STATUS" = "healthy" ] && break
+            sleep 3
+          done
+          test -d data
+          docker compose -f deploy/docker-compose.dev.yml down

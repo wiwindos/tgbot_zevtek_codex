@@ -71,9 +71,10 @@
 | **scheduler** | Периодические задачи обновления моделей | `scheduler/jobs.py`, `scheduler/runner.py` |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
 | **config**   | Конфигурация окружения          | `.env` (переменная `BOT_TOKEN`), `.env.example`                                  |
-| **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`                                       |
-| **deps**     | Зависимости проекта             | `requirements.txt`                                               |
+| **CI/CD**    | Настройка сборки и тестирования | `.github/workflows/ci.yml`, `deploy/` |
+| **deps**     | Зависимости проекта             | `requirements.txt` |
 | **logging**  | Структурированный вывод и перехват ошибок | `logging_config.py`, `bot/error_middleware.py` |
+| **deploy**   | Docker и Compose файлы          | `Dockerfile`, `.dockerignore`, `deploy/*.yml`, `scripts/entrypoint.sh` |
 
 ## 3. Навигация для агентов
 
