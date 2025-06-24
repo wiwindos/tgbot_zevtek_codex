@@ -90,9 +90,9 @@
 
 ## 4. Деплой
 
-* Dockerfile формирует облегчённый образ на базе python:3.11-slim с non-root пользователем и healthcheck `/ping`.
-* `deploy/docker-compose.dev.yml` собирает образ локально, `docker-compose.prod.yml` использует образ из GHCR.
-* `scripts/entrypoint.sh` инициализирует БД перед запуском бота.
-* Makefile содержит цели `docker-build`, `docker-run`, `compose-up`, `compose-down`, `docker-push`.
+* Dockerfile теперь многоступенчатый: этап `builder` собирает и тестирует код, `runtime` содержит только продовые зависимости.
+* `deploy/docker-compose.dev.yml` собирает builder-образ, `docker-compose.prod.yml` использует образ из GHCR.
+* `scripts/entrypoint.sh` инициализирует БД перед запуском бота, путь задаётся переменной `DB_PATH` (по умолчанию `/app/data/bot.db`).
+* Makefile содержит цели `dev` и `prod` для запуска соответствующих compose-стеков.
 * Docker-тесты помечены маркером `docker` и автоматически пропускаются в CI.
 

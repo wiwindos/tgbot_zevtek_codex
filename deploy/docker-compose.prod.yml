@@ -3,6 +3,7 @@ services:
     image: ghcr.io/${REPOSITORY:-myorg/tgbot}:latest
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
+      - DB_PATH=${DB_PATH}
     volumes:
       - ./data:/app/data
     ports:

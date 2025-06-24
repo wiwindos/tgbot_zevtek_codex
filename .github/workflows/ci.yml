@@ -32,6 +32,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
+          target: builder
+          push: false
+      - uses: docker/build-push-action@v5
+        with:
+          target: runtime
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
