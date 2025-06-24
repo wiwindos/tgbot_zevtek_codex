@@ -9,12 +9,13 @@ models(id PK, provider, name, updated_at)
 ```
 """
 
+import os
 import pathlib
 from contextlib import asynccontextmanager
 
 import aiosqlite
 
-DB_PATH = pathlib.Path("bot.db")
+DB_PATH = pathlib.Path(os.getenv("DB_PATH", "/app/data/bot.db"))
 
 CREATE_USERS = """
 CREATE TABLE IF NOT EXISTS users(
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS config(
 
 
 async def init_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("PRAGMA foreign_keys=ON")
         await db.execute(CREATE_USERS)
@@ -86,6 +88,7 @@ async def init_db():
 
 @asynccontextmanager
 async def get_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = await aiosqlite.connect(DB_PATH)
     await db.execute("PRAGMA foreign_keys=ON")
     try:

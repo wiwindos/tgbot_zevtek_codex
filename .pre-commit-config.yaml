@@ -56,4 +56,8 @@ repos:
         entry: bash -c 'hadolint "$@" || true'
         language: system
         types: ["dockerfile"]
+      - id: pip-check
+        name: pip-check
+        entry: pip check
+        language: system
 

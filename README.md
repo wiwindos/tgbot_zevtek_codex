@@ -1,13 +1,14 @@
 # Telegram Bot Skeleton
 
 ![GHCR pulls](https://img.shields.io/badge/ghcr-pulls-blue)
+![Docker Publish](https://github.com/myorg/tgbot/actions/workflows/ci.yml/badge.svg)
 
 ## Development
 
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Set up pre-commit hooks:
@@ -24,9 +25,9 @@ pytest -q
 
 ## Database
 
-The bot uses a SQLite file `bot.db`. It is created by calling `init_db()` from
-`bot/database.py`. Foreign key support is enabled via
-`PRAGMA foreign_keys=ON` during initialization.
+The bot stores data in a SQLite file. Set the location via the `DB_PATH` variable
+(default `/app/data/bot.db`). Tables are created by `init_db()` from
+`bot/database.py` with foreign keys enabled using `PRAGMA foreign_keys=ON`.
 
 ## Authorization
 
@@ -98,14 +99,14 @@ The chat defined in `ADMIN_CHAT_ID` gains extra commands:
 Quick start:
 
 ```bash
-make docker-build
-make docker-run  # http://localhost:8080/ping
+make dev   # build + run development stack
+make prod  # run production stack
 ```
-
-To run with Compose:
-
-```bash
-make compose-up
+Example `.env`:
+```env
+BOT_TOKEN=...
+ADMIN_CHAT_ID=999
+DB_PATH=/app/data/bot.db
 ```
 
 ## Observability

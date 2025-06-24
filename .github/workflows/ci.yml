@@ -10,7 +10,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install deps
-        run: pip install -r requirements.txt pre-commit "httpx[socks]"
+        run: pip install -r requirements-dev.txt "httpx[socks]"
       - name: DB tests
         run: pytest -q tests/db
       - name: Lint
@@ -32,6 +32,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
+          target: builder
+          push: false
+      - uses: docker/build-push-action@v5
+        with:
+          target: runtime
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
