@@ -26,20 +26,21 @@ class GeminiProvider(BaseProvider):
 
     def __init__(self) -> None:
         self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self.model = os.getenv("DEFAULT_MODEL", "gemini-pro")
-        self._proxy_url = os.getenv("GEMINI_PROXY")
+        model = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+        self.model = model.replace("models/", "")
+        #self._proxy_url = os.getenv("GEMINI_PROXY")
         self._configure()
 
     def _configure(self) -> None:
         try:
-            genai.configure(api_key=self.api_key, proxy=self._proxy_url)
+            genai.configure(api_key=self.api_key)
         except TypeError:
             genai.configure(api_key=self.api_key)
         self._client = genai.GenerativeModel(self.model)
 
     async def reload_settings(self) -> None:
         self._proxy_url = await database.get_config(
-            "GEMINI_PROXY", os.getenv("GEMINI_PROXY")
+            #"GEMINI_PROXY", os.getenv("GEMINI_PROXY")
         )
         self._configure()
 
@@ -81,7 +82,7 @@ class GeminiProvider(BaseProvider):
             raise ProxyError("Proxy not set")
         proxies = {"https": self._proxy_url}
         try:
-            async with httpx.AsyncClient(proxies=proxies, timeout=5) as client:
+            async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.head("https://www.google.com/generate_204")
             if resp.status_code >= 400:
                 raise ProxyError("Bad status")

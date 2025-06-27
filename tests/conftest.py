@@ -47,7 +47,7 @@ def stub_provider_registry(monkeypatch):
         name = "gemini"
 
         async def list_models(self):
-            return ["gemini-pro"]
+            return ["gemini-2.0-flash"]
 
         async def generate(self, prompt, context=None, file_bytes=None):
             return "stub"

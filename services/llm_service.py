@@ -38,7 +38,7 @@ async def generate_reply(
     registry = get_registry()
     if model is None:
         selected = _buffer.get_model(chat_id) if _buffer else None
-        model = selected or os.getenv("DEFAULT_MODEL", "gemini-pro")
+        model = selected or os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
     model_str = cast(str, model)
     provider = registry.get(model_str.split("-")[0])
     user = await user_service.get_or_create_user(chat_id, str(chat_id))

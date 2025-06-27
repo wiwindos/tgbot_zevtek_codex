@@ -16,18 +16,18 @@ from .base import BaseProvider
 class DipseekProvider(BaseProvider):
     """Dipseek chat models."""
 
-    name = "dipseek"
+    name = "deepseek"
 
     def __init__(self) -> None:
-        self.endpoint = os.getenv("DIPSEEK_ENDPOINT", "https://dipseek.ai")
-        self.api_key = os.getenv("DIPSEEK_API_KEY", "")
+        self.endpoint = os.getenv("DEEPSEEK_ENDPOINT", "https://api.deepseek.com")
+        self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
         self._client = httpx.AsyncClient(
             base_url=self.endpoint,
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
 
     async def list_models(self) -> Sequence[str]:
-        resp = await self._client.get("/v1/models")
+        resp = await self._client.get("/models")
         resp.raise_for_status()
         data = resp.json()
         return data.get("models", [])
@@ -42,7 +42,7 @@ class DipseekProvider(BaseProvider):
             raise NotImplementedError("Files are not supported")
         payload = {"messages": [{"role": "user", "content": prompt}]}
         resp = await self._client.post(
-            "/v1/chat/completions",
+            "/chat/completions",
             json=payload,
         )
         resp.raise_for_status()

@@ -3,6 +3,5 @@ tests/
 .venv/
 *.log
 *.db
-deploy/
 .git
 .github

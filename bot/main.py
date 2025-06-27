@@ -92,6 +92,8 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     return bot, dp
 
 
+from bot.database import init_db
+
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ping", action="store_true", help="health check")
@@ -103,6 +105,7 @@ async def main():
         return 0
 
     logger.info("bot_started", version=__version__)
+    await init_db()  # Инициализация БД
     bot, dp = create_bot_and_dispatcher()
     await dp.start_polling(bot)
 

@@ -15,7 +15,7 @@ from services.llm_service import generate_reply, get_registry
 FILES_DIR = Path(os.getenv("FILES_DIR", "./data/files"))
 FILES_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-pro")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
 
 
 def get_file_router() -> Router:
