@@ -40,11 +40,11 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 
 ## Supported LLM providers
 
-| name    | supports_files | env vars                             |
-|---------|---------------|--------------------------------------|
-| gemini  | true          | `GEMINI_API_KEY` |
-| mistral | false         | `MISTRAL_API_KEY` |
-| deepseek | false         | `DEEPSEEK_ENDPOINT`, `DEEPSEEK_API_KEY` |
+| name    | image | audio | text/PDF | env vars |
+|---------|-------|-------|----------|--------------------------------------|
+| gemini  | ✓     | ✓     | ✓        | `GEMINI_API_KEY` |
+| mistral | ✗     | ✗     | ✗        | `MISTRAL_API_KEY` |
+| deepseek | ✗     | ✗     | ✗        | `DEEPSEEK_ENDPOINT`, `DEEPSEEK_API_KEY` |
 
 List available models with `/models` or switch provider via `/providers`.
 
@@ -58,7 +58,8 @@ List available models with `/models` or switch provider via `/providers`.
 
 Uploaded documents are saved to the directory defined by `FILES_DIR` (default
 `./data/files`). Only models with ``supports_files`` can process files. Gemini
-currently supports file input.
+supports images, audio and text/PDF files when using the 1.5 Pro model.
+Maximum size is 512 kB.
 
 ## Model auto-refresh
 

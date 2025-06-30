@@ -39,7 +39,7 @@ class DummyProvider:
     async def list_models(self):
         return self.models
 
-    async def generate(self, prompt, context=None, file_bytes=None):
+    async def generate(self, prompt, context=None, file=None):
         return self.name
 
 

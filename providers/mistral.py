@@ -10,6 +10,8 @@ from typing import Sequence
 
 import httpx
 
+from services.file_service import FilePayload
+
 from .base import BaseProvider
 
 
@@ -17,6 +19,10 @@ class MistralProvider(BaseProvider):
     """Mistral AI models over HTTP."""
 
     name = "mistral"
+    supports_files = False
+    supports_image = False
+    supports_audio = False
+    supports_text = False
 
     def __init__(self) -> None:
         self.api_key = os.getenv("MISTRAL_API_KEY", "")
@@ -40,9 +46,9 @@ class MistralProvider(BaseProvider):
         self,
         prompt: str,
         context: Sequence[tuple[str, str]] | None = None,
-        file_bytes: bytes | None = None,
+        file: FilePayload | None = None,
     ) -> str:
-        if file_bytes is not None:
+        if file is not None:
             raise NotImplementedError("Files are not supported")
         payload = {
             "model": self.model,

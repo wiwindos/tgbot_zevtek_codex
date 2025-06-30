@@ -40,7 +40,7 @@ class DummyGemini:
     async def list_models(self):
         return ["gemini-pro"]
 
-    async def generate(self, prompt, context=None, file_bytes=None):
+    async def generate(self, prompt, context=None, file=None):
         DummyGemini.calls += 1
         return "g"
 
@@ -53,7 +53,7 @@ class DummyMistral:
     async def list_models(self):
         return ["mistral-8x7b"]
 
-    async def generate(self, prompt, context=None, file_bytes=None):
+    async def generate(self, prompt, context=None, file=None):
         DummyMistral.calls += 1
         return "m"
 
