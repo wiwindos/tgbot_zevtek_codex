@@ -9,6 +9,7 @@ from bot import database
 from providers import ProviderRegistry
 from services import user_service
 from services.context import ContextBuffer
+from services.file_service import FilePayload
 
 _registry: ProviderRegistry | None = None
 _buffer: ContextBuffer | None = None
@@ -31,7 +32,7 @@ async def generate_reply(
     prompt: str,
     model: str | None = None,
     *,
-    file_bytes: bytes | None = None,
+    file: FilePayload | None = None,
     file_path: str | None = None,
     mime: str | None = None,
 ) -> str:
@@ -56,7 +57,7 @@ async def generate_reply(
     text = await provider.generate(
         prompt,
         context=history,
-        file_bytes=file_bytes,
+        file=file,
     )
     await database.log_response(req_id, text)
     return text

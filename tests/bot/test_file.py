@@ -71,7 +71,8 @@ def bot_and_dp(monkeypatch, temp_db):
 
     async def fake_download(self, file_path, destination):
         async with aiofiles.open(destination, "wb") as f:
-            await f.write(b"pdf")
+            data = Path("tests/fixtures/test.pdf").read_bytes()
+            await f.write(data)
         return destination
 
     monkeypatch.setattr(types.Message, "answer", fake_answer)
@@ -86,23 +87,29 @@ def setup_registry(monkeypatch, supports_files=True):
     class DummyGemini:
         name = "gemini"
         supports_files = True
+        supports_image = True
+        supports_audio = True
+        supports_text = True
 
         async def list_models(self):
             return ["gemini-pro"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
-            DummyGemini.captured = file_bytes
+        async def generate(self, prompt, context=None, file=None):
+            DummyGemini.captured = file.data if file else None
             return "ok"
 
     class DummyMistral:
         name = "mistral"
         supports_files = False
+        supports_image = False
+        supports_audio = False
+        supports_text = False
 
         async def list_models(self):
             return ["mistral-small"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
-            DummyMistral.captured = file_bytes
+        async def generate(self, prompt, context=None, file=None):
+            DummyMistral.captured = file.data if file else None
             return "ok"
 
     class DummyRegistry:
@@ -147,7 +154,7 @@ async def test_upload_and_store(bot_and_dp, monkeypatch):
 
     await dp.feed_update(bot, Update(update_id=1, message=msg))
 
-    assert provider.captured == b"pdf"
+    assert provider.captured and provider.captured.startswith(b"%PDF")
     async with database.get_db() as db:
         cur = await db.execute("SELECT path, mime FROM files")
         row = await cur.fetchone()

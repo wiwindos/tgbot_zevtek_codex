@@ -61,7 +61,7 @@ async def test_list_models_aggregate(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_logs_db(monkeypatch, temp_db):
-    async def fake_generate(self, prompt, context=None):
+    async def fake_generate(self, prompt, context=None, file=None):
         return "stub"
 
     monkeypatch.setattr(
