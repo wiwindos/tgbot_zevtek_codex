@@ -13,7 +13,7 @@ except ImportError:  # pragma: no cover - fallback when libmagic is absent
 
 MAX_FILE_SIZE = 512_000  # 512 kB
 ALLOWED_IMAGE = {"image/png", "image/jpeg"}
-ALLOWED_AUDIO = {"audio/wav", "audio/x-wav", "audio/mpeg"}
+ALLOWED_AUDIO = {"audio/wav", "audio/x-wav", "audio/mpeg", "audio/ogg"}
 ALLOWED_TEXT = {"text/plain", "application/pdf"}
 
 
@@ -47,11 +47,15 @@ def detect_mime(data: bytes, filename: str | None = None) -> FilePayload:
     """Return file description after size and type checks."""
     if len(data) > MAX_FILE_SIZE:
         raise FileTooLarge()
-    if magic:
-        mime = magic.from_buffer(data, mime=True) or "application/octet-stream"
-    else:
-        guess = guess_type(filename or "file.bin")[0]
-        mime = guess or "application/octet-stream"
+    mime = None
+    if filename:
+        mime = guess_type(filename)[0]
+    if (not mime or mime == "application/octet-stream") and magic:
+        try:
+            mime = magic.from_buffer(data, mime=True)
+        except Exception:  # pragma: no cover - libmagic misconfigured
+            mime = None
+    mime = mime or "application/octet-stream"
     if mime in ALLOWED_IMAGE:
         kind = FileKind.IMAGE
     elif mime in ALLOWED_AUDIO:
