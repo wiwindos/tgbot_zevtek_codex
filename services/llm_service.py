@@ -10,6 +10,7 @@ from providers import ProviderRegistry
 from services import user_service
 from services.context import ContextBuffer
 from services.file_service import FilePayload
+from services.llm import safe_generate
 
 _registry: ProviderRegistry | None = None
 _buffer: ContextBuffer | None = None
@@ -54,7 +55,8 @@ async def generate_reply(
     if file_path:
         await database.log_file(req_id, file_path, mime or "")
     history = _buffer.get(chat_id) if _buffer else []
-    text = await provider.generate(
+    text = await safe_generate(
+        provider,
         prompt,
         context=history,
         file=file,
