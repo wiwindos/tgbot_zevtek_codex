@@ -1,11 +1,16 @@
+import structlog
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot import database
 from bot.utils import send_long_message
+from services import error_service
 from services.context import ContextBuffer
+from services.llm import ProviderError
 from services.llm_service import generate_reply, get_registry
+
+logger = structlog.get_logger()
 
 
 def get_conversation_router(buffer: ContextBuffer) -> Router:
@@ -102,11 +107,64 @@ def get_conversation_router(buffer: ContextBuffer) -> Router:
         await cb.answer(f"Модель {name} активна")
         await cb.message.edit_text(f"Модель: {name}")
 
+    @router.callback_query(lambda c: c.data == "show_models")
+    async def show_models(cb: types.CallbackQuery) -> None:
+        prov = buffer.get_provider(cb.from_user.id)
+        if prov is None:
+            await cb.answer()
+            await cb.message.answer("Сначала выберите /providers")
+            return
+        registry = get_registry()
+        models = await registry.get(prov).list_models()
+        # fmt: off
+        buttons = [
+            [InlineKeyboardButton(text=m, callback_data=f"model:{m}")]
+            for m in models
+        ]
+        # fmt: on
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        await cb.message.answer("Модели:", reply_markup=kb)
+        await cb.answer()
+
     @router.message()
     async def dialog(message: types.Message) -> None:
         if message.text is None or message.text.startswith("/"):
             return
-        reply = await generate_reply(message.from_user.id, message.text)
+        try:
+            reply = await generate_reply(message.from_user.id, message.text)
+        except ProviderError as err:
+            logger.warning(
+                "provider_error",
+                provider=err.provider,
+                model=err.model,
+                error=type(err.orig_exc).__name__,
+                elapsed_ms=round(err.elapsed * 1000),
+                user_id=message.from_user.id,
+            )
+            await error_service.log_error(
+                err.provider,
+                err.model or "",
+                type(err.orig_exc).__name__,
+            )
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="📋 Модели",
+                            callback_data="show_models",
+                        )
+                    ]
+                ]
+            )
+            await send_long_message(
+                message.bot,
+                message.chat.id,
+                f"⚠️ Не удалось получить ответ от модели {err.model}. "
+                "Попробуйте выбрать другую модель.",
+                reply_markup=kb,
+                log=False,
+            )
+            return
         await send_long_message(message.bot, message.chat.id, reply)
 
     return router

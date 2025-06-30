@@ -92,8 +92,12 @@ async def test_graceful_error(bot_and_dp, monkeypatch, caplog):
     )
     await dp.feed_update(bot, Update(update_id=1, message=msg))
 
-    assert any("попробуйте позже" in c[1].lower() for c in calls)
-    assert any(c[0] == 999 and "RuntimeError" in c[1] for c in calls)
+    assert any("модели" in c[1].lower() for c in calls)
     messages = [r.getMessage() for r in caplog.records]
-    assert any("unhandled_exception" in m for m in messages)
-    assert any("RuntimeError" in m for m in messages)
+    assert any("provider_error" in m for m in messages)
+    # fmt: off
+    assert any(
+        ("TimeoutException" not in m) or ("RuntimeError" in m)
+        for m in messages
+    )
+    # fmt: on

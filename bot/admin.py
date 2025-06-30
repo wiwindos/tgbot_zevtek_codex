@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from bot import database
 from bot.utils import send_long_message
 from scheduler.jobs import pull_and_sync_models
-from services import user_service
+from services import error_service, user_service
 from services.llm_service import get_registry
 
 
@@ -69,6 +69,19 @@ def get_admin_router(admin_chat_id: int) -> Router:
                 rows = await cur.fetchall()
             lines = [f"{r[1]}:{r[0]} — {r[2]}" for r in rows]
             text = "\n".join(lines) or "Нет моделей"
+            await send_long_message(msg.bot, msg.chat.id, text, log=False)
+        elif cmd == "errors":
+            summary = await error_service.get_recent_summary()
+            if not summary:
+                text = "Ошибок за последние 24 ч нет"
+            else:
+                # fmt: off
+                lines = [
+                    f"{p}\u2002{m}\u2002{e}\u2002×{n}"
+                    for p, m, e, n in summary
+                ]
+                # fmt: on
+                text = "\n".join(lines)
             await send_long_message(msg.bot, msg.chat.id, text, log=False)
         elif cmd == "refresh" and len(parts) >= 3 and parts[2] == "models":
             await pull_and_sync_models(get_registry())

@@ -65,6 +65,16 @@ CREATE TABLE IF NOT EXISTS files(
 );
 """
 
+CREATE_ERRORS = """
+CREATE TABLE IF NOT EXISTS errors(
+    id INTEGER PRIMARY KEY,
+    provider TEXT,
+    model TEXT,
+    error TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 CREATE_CONFIG = """
 CREATE TABLE IF NOT EXISTS config(
     key TEXT PRIMARY KEY,
@@ -83,6 +93,7 @@ async def init_db():
         await db.execute(CREATE_MODELS)
         await db.execute(CREATE_FILES)
         await db.execute(CREATE_CONFIG)
+        await db.execute(CREATE_ERRORS)
         await db.commit()
 
 

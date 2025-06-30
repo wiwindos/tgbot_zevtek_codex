@@ -53,6 +53,16 @@
   * `updated_at: TIMESTAMP`
 * Таблица `models`.
 
+### Error
+
+* Поля:
+  * `id: INTEGER PRIMARY KEY`
+  * `provider: TEXT`
+  * `model: TEXT`
+  * `error: TEXT`
+  * `created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+* Таблица `errors` собирает сбои провайдеров.
+
 ### Setting
 
 * Поля:

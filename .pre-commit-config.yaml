@@ -49,6 +49,10 @@ repos:
         name: mypy strict admin router
         files: ^bot/admin.py$
         args: [--strict, --ignore-missing-imports, --follow-imports=skip, --disable-error-code=misc]
+      - id: mypy
+        name: mypy strict error service
+        files: ^services/error_service.py$
+        args: [--strict, --ignore-missing-imports, --follow-imports=skip, --disable-error-code=misc]
   - repo: local
     hooks:
       - id: dockerfilelint
