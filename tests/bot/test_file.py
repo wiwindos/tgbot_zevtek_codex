@@ -115,7 +115,7 @@ def setup_registry(monkeypatch, supports_files=True):
         async def list_all(self):
             return ["gemini-pro"]
 
-        def get(self, name):
+        def get(self, name, model=None):
             return self._providers[name]
 
     monkeypatch.setattr("services.llm_service.ProviderRegistry", DummyRegistry)

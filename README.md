@@ -46,7 +46,13 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 | mistral | false         | `MISTRAL_API_KEY` |
 | deepseek | false         | `DEEPSEEK_ENDPOINT`, `DEEPSEEK_API_KEY` |
 
-List available models with `/models`.
+List available models with `/models` or switch provider via `/providers`.
+
+## 🔄 Переключение провайдера и модели
+
+1. Выполните команду `/providers` и выберите нужный пункт.
+2. Затем `/models` покажет список моделей активного провайдера.
+3. Выбранные параметры сохраняются для каждого пользователя отдельно.
 
 ## File handling
 

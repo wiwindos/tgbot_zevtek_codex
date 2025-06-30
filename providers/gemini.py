@@ -23,6 +23,10 @@ class GeminiProvider(BaseProvider):
         self.model = model.replace("models/", "")
         self._configure()
 
+    def set_model(self, name: str) -> None:
+        self.model = name.replace("models/", "")
+        self._configure()
+
     def _configure(self) -> None:
         try:
             genai.configure(api_key=self.api_key)

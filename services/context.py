@@ -14,7 +14,8 @@ class ContextBuffer:
     def __init__(self, max_messages: int = 20) -> None:
         self.max_messages = max_messages
         self._data: Dict[int, Deque[Tuple[str, str]]] = {}
-        self._selected: Dict[int, str] = {}
+        self.user_provider: Dict[int, str] = {}
+        self.user_models: Dict[int, Dict[str, str]] = {}
 
     def add(self, chat_id: int, role: str, text: str) -> None:
         queue = self._data.setdefault(chat_id, deque(maxlen=self.max_messages))
@@ -26,8 +27,20 @@ class ContextBuffer:
     def clear(self, chat_id: int) -> None:
         self._data.pop(chat_id, None)
 
+    def set_provider(self, chat_id: int, provider: str) -> None:
+        self.user_provider[chat_id] = provider
+
+    def get_provider(self, chat_id: int) -> str | None:
+        return self.user_provider.get(chat_id)
+
     def set_model(self, chat_id: int, model: str) -> None:
-        self._selected[chat_id] = model
+        provider = model.split("-")[0]
+        models = self.user_models.setdefault(chat_id, {})
+        models[provider] = model
+        self.user_provider.setdefault(chat_id, provider)
 
     def get_model(self, chat_id: int) -> str | None:
-        return self._selected.get(chat_id)
+        provider = self.get_provider(chat_id)
+        if provider is None:
+            return None
+        return self.user_models.get(chat_id, {}).get(provider)
