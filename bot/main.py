@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 
 from bot import __version__
 from bot.admin import get_admin_router
-from bot.admin_proxy import get_proxy_router
 from bot.context_middleware import ContextMiddleware
 from bot.conversation import get_conversation_router
+from bot.database import init_db
 from bot.error_middleware import ErrorMiddleware
 from bot.file_handlers import get_file_router
 from bot.middleware import AuthMiddleware
@@ -74,13 +74,12 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
     buffer = ContextBuffer(max_messages=max_ctx)
     bot.context_buffer = buffer
     dp.context_buffer = buffer
-    gemini_provider = GeminiProvider()
+    GeminiProvider()
     set_context_buffer(buffer)
     dp.message.middleware(ErrorMiddleware())
     dp.message.outer_middleware(ContextMiddleware(buffer))
     dp.message.middleware(AuthMiddleware(admin_id))
     dp.include_router(get_admin_router(admin_id))
-    dp.include_router(get_proxy_router(admin_id, gemini_provider))
     dp.include_router(get_file_router())
     dp.include_router(get_conversation_router(buffer))
     dp.message(Command("start"))(start_handler)
@@ -91,8 +90,6 @@ def create_bot_and_dispatcher():  # удобно реиспользовать в
         scheduler.start()
     return bot, dp
 
-
-from bot.database import init_db
 
 async def main():
     parser = argparse.ArgumentParser()

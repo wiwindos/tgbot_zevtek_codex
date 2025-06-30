@@ -2,6 +2,7 @@
 
 ![GHCR pulls](https://img.shields.io/badge/ghcr-pulls-blue)
 ![Docker Publish](https://github.com/myorg/tgbot/actions/workflows/ci.yml/badge.svg)
+![Version](https://img.shields.io/badge/version-1.1.0--alpha-green)
 
 ## Development
 
@@ -41,32 +42,11 @@ Messages for each chat are stored in an in-memory buffer. The number of stored p
 
 | name    | supports_files | env vars                             |
 |---------|---------------|--------------------------------------|
-| gemini  | true          | `GEMINI_API_KEY`, `GEMINI_PROXY` |
-| mistral | false         | `MISTRAL_API_KEY`                    |
-| dipseek | false         | `DIPSEEK_ENDPOINT`, `DIPSEEK_API_KEY` |
-
-## Gemini via GenAISDK + Proxy
-
-1. Get your API key from [AI Studio](https://aistudio.google.com/).
-2. Configure proxy if needed:
-
-```bash
-/admin proxy set http://1.1.1.1:8080
-/admin proxy check
-```
+| gemini  | true          | `GEMINI_API_KEY` |
+| mistral | false         | `MISTRAL_API_KEY` |
+| deepseek | false         | `DEEPSEEK_ENDPOINT`, `DEEPSEEK_API_KEY` |
 
 List available models with `/models`.
-
-## Proxy for Gemini
-
-Use admin commands to configure an HTTP/SOCKS proxy for Gemini:
-
-```bash
-/admin proxy set host:port:user:pass
-/admin proxy check
-```
-
-The value is stored in the `config` table under key `GEMINI_PROXY`.
 
 ## File handling
 
@@ -114,7 +94,7 @@ DB_PATH=/app/data/bot.db
 Logs are emitted in JSON format using `structlog`. Example entry:
 
 ```json
-{"event": "bot_started", "level": "info", "version": "0.1.0"}
+{"event": "bot_started", "level": "info", "version": "1.1.0-alpha"}
 ```
 
 Configure log level via `LOG_LEVEL` (default `INFO`). To send errors to Sentry

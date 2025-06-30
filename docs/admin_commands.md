@@ -1,9 +1,7 @@
 # Admin commands
 
-## Proxy for Gemini
-
-- `/admin proxy set <url>` — save proxy string for Gemini requests.
-- `/admin proxy test` — uses `GeminiProvider.check_proxy()` to validate the proxy.
+Bot traffic goes through the container network. No additional proxy commands are
+required.
 
 Other admin commands are listed in README.
 

@@ -1,6 +1,6 @@
-"""Dipseek provider via HTTPX.
+"""Deepseek provider via HTTPX.
 
-See https://dipseek.ai/docs
+See https://deepseek.com/docs
 """
 
 from __future__ import annotations
@@ -13,13 +13,16 @@ import httpx
 from .base import BaseProvider
 
 
-class DipseekProvider(BaseProvider):
-    """Dipseek chat models."""
+class DeepseekProvider(BaseProvider):
+    """Deepseek chat models."""
 
     name = "deepseek"
 
     def __init__(self) -> None:
-        self.endpoint = os.getenv("DEEPSEEK_ENDPOINT", "https://api.deepseek.com")
+        self.endpoint = os.getenv(
+            "DEEPSEEK_ENDPOINT",
+            "https://api.deepseek.com",
+        )
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
         self._client = httpx.AsyncClient(
             base_url=self.endpoint,
@@ -27,7 +30,7 @@ class DipseekProvider(BaseProvider):
         )
 
     async def list_models(self) -> Sequence[str]:
-        resp = await self._client.get("/models")
+        resp = await self._client.get("/v1/models")
         resp.raise_for_status()
         data = resp.json()
         return data.get("models", [])

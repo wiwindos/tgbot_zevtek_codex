@@ -7,15 +7,8 @@ import os
 from typing import Any, Sequence
 
 import google.generativeai as genai
-import httpx
-
-from bot import database
 
 from .base import BaseProvider
-
-
-class ProxyError(Exception):
-    """Raised when proxy check fails."""
 
 
 class GeminiProvider(BaseProvider):
@@ -28,7 +21,6 @@ class GeminiProvider(BaseProvider):
         self.api_key = os.getenv("GEMINI_API_KEY", "")
         model = os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
         self.model = model.replace("models/", "")
-        #self._proxy_url = os.getenv("GEMINI_PROXY")
         self._configure()
 
     def _configure(self) -> None:
@@ -37,12 +29,6 @@ class GeminiProvider(BaseProvider):
         except TypeError:
             genai.configure(api_key=self.api_key)
         self._client = genai.GenerativeModel(self.model)
-
-    async def reload_settings(self) -> None:
-        self._proxy_url = await database.get_config(
-            #"GEMINI_PROXY", os.getenv("GEMINI_PROXY")
-        )
-        self._configure()
 
     async def list_models(self) -> Sequence[str]:
         models = []
@@ -76,15 +62,3 @@ class GeminiProvider(BaseProvider):
             return str(getattr(resp, "text", ""))
 
         return await asyncio.to_thread(run)
-
-    async def check_proxy(self) -> None:
-        if not self._proxy_url:
-            raise ProxyError("Proxy not set")
-        proxies = {"https": self._proxy_url}
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.head("https://www.google.com/generate_204")
-            if resp.status_code >= 400:
-                raise ProxyError("Bad status")
-        except httpx.HTTPError as exc:
-            raise ProxyError(str(exc)) from exc

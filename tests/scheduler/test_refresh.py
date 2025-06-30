@@ -6,7 +6,7 @@ import pytest_asyncio
 from aiogram import Bot, types
 
 from bot import database
-from providers import dipseek, gemini, mistral
+from providers import deepseek, gemini, mistral
 from providers import registry as reg
 from scheduler.jobs import pull_and_sync_models
 
@@ -42,12 +42,16 @@ def provider_registry(monkeypatch):
         return ["m-1"]
 
     monkeypatch.setattr(mistral.MistralProvider, "list_models", m_models)
-    monkeypatch.setattr(dipseek.DipseekProvider, "__init__", lambda self: None)
+    monkeypatch.setattr(
+        deepseek.DeepseekProvider,
+        "__init__",
+        lambda self: None,
+    )
 
     async def d_models(self):
         return ["d-1"]
 
-    monkeypatch.setattr(dipseek.DipseekProvider, "list_models", d_models)
+    monkeypatch.setattr(deepseek.DeepseekProvider, "list_models", d_models)
     return reg.ProviderRegistry()
 
 
