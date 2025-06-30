@@ -59,7 +59,7 @@ def stub_provider_registry(monkeypatch):
         async def list_all(self):
             return ["gemini-pro"]
 
-        def get(self, name):
+        def get(self, name, model=None):
             return self._providers["gemini"]
 
     monkeypatch.setattr("services.llm_service.ProviderRegistry", DummyRegistry)

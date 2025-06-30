@@ -37,10 +37,17 @@ async def generate_reply(
 ) -> str:
     registry = get_registry()
     if model is None:
-        selected = _buffer.get_model(chat_id) if _buffer else None
-        model = selected or os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+        selected_model = _buffer.get_model(chat_id) if _buffer else None
+        model = selected_model or os.getenv(
+            "DEFAULT_MODEL",
+            "gemini-2.0-flash",
+        )
     model_str = cast(str, model)
-    provider = registry.get(model_str.split("-")[0])
+    provider_name = model_str.split("-")[0]
+    provider = registry.get(provider_name, model_str)
+    if _buffer:
+        _buffer.set_provider(chat_id, provider_name)
+        _buffer.set_model(chat_id, model_str)
     user = await user_service.get_or_create_user(chat_id, str(chat_id))
     req_id = await database.log_request(user["id"], prompt, model_str)
     if file_path:

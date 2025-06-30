@@ -9,6 +9,11 @@ class BaseProvider(ABC):
 
     name: str
     supports_files: bool = False
+    model: str | None = None
+
+    def set_model(self, name: str) -> None:
+        """Set active model if provider supports multiple."""
+        self.model = name
 
     @abstractmethod
     async def list_models(self) -> Sequence[str]:

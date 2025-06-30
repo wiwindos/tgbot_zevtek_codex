@@ -24,10 +24,14 @@ class DeepseekProvider(BaseProvider):
             "https://api.deepseek.com",
         )
         self.api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        self.model = os.getenv("DEFAULT_MODEL", "deepseek-chat")
         self._client = httpx.AsyncClient(
             base_url=self.endpoint,
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
+
+    def set_model(self, name: str) -> None:
+        self.model = name
 
     async def list_models(self) -> Sequence[str]:
         resp = await self._client.get("/v1/models")

@@ -70,7 +70,7 @@ async def test_graceful_error(bot_and_dp, monkeypatch, caplog):
         async def list_all(self):
             return ["gemini-pro"]
 
-        def get(self, name):
+        def get(self, name, model=None):
             return self._providers["gemini"]
 
     monkeypatch.setattr("services.llm_service.ProviderRegistry", BoomRegistry)

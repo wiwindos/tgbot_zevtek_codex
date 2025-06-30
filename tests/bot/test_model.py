@@ -65,7 +65,7 @@ class DummyRegistry:
     async def list_all(self):
         return ["gemini-pro", "mistral-8x7b"]
 
-    def get(self, name):
+    def get(self, name, model=None):
         return self._providers[name]
 
 

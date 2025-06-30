@@ -28,5 +28,8 @@ class ProviderRegistry:
                 models.add(model)
         return list(models)
 
-    def get(self, name: str) -> BaseProvider:
-        return self._providers[name]
+    def get(self, name: str, model: str | None = None) -> BaseProvider:
+        provider = self._providers[name]
+        if model:
+            provider.set_model(model)
+        return provider

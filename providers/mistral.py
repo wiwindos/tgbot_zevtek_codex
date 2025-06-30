@@ -21,10 +21,14 @@ class MistralProvider(BaseProvider):
     def __init__(self) -> None:
         self.api_key = os.getenv("MISTRAL_API_KEY", "")
         self.base_url = os.getenv("MISTRAL_ENDPOINT", "https://api.mistral.ai")
+        self.model = os.getenv("DEFAULT_MODEL", "mistral-small")
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
+
+    def set_model(self, name: str) -> None:
+        self.model = name
 
     async def list_models(self) -> Sequence[str]:
         resp = await self._client.get("/v1/models")
@@ -41,7 +45,7 @@ class MistralProvider(BaseProvider):
         if file_bytes is not None:
             raise NotImplementedError("Files are not supported")
         payload = {
-            "model": "mistral-small",
+            "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
         }
         resp = await self._client.post("/v1/chat/completions", json=payload)
