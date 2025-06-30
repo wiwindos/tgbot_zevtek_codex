@@ -86,23 +86,29 @@ def setup_registry(monkeypatch, supports_files=True):
     class DummyGemini:
         name = "gemini"
         supports_files = True
+        supports_image = True
+        supports_audio = True
+        supports_text = True
 
         async def list_models(self):
             return ["gemini-pro"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
-            DummyGemini.captured = file_bytes
+        async def generate(self, prompt, context=None, file=None):
+            DummyGemini.captured = file.data if file else None
             return "ok"
 
     class DummyMistral:
         name = "mistral"
         supports_files = False
+        supports_image = False
+        supports_audio = False
+        supports_text = False
 
         async def list_models(self):
             return ["mistral-small"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
-            DummyMistral.captured = file_bytes
+        async def generate(self, prompt, context=None, file=None):
+            DummyMistral.captured = file.data if file else None
             return "ok"
 
     class DummyRegistry:

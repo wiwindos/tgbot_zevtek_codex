@@ -60,7 +60,7 @@ async def test_graceful_error(bot_and_dp, monkeypatch, caplog):
         async def list_models(self):
             return ["gemini-pro"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
+        async def generate(self, prompt, context=None, file=None):
             raise RuntimeError("gemini boom")
 
     class BoomRegistry:

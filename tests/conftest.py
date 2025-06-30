@@ -45,11 +45,15 @@ def pytest_collection_modifyitems(config, items):
 def stub_provider_registry(monkeypatch):
     class DummyProvider:
         name = "gemini"
+        supports_files = True
+        supports_image = True
+        supports_audio = True
+        supports_text = True
 
         async def list_models(self):
             return ["gemini-2.0-flash"]
 
-        async def generate(self, prompt, context=None, file_bytes=None):
+        async def generate(self, prompt, context=None, file=None):
             return "stub"
 
     class DummyRegistry:

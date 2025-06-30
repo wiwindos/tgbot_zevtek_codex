@@ -67,6 +67,7 @@
 | **bot-core** | Логика Telegram-бота            | `main.py` (`start_handler`, `help_handler`, `ping_handler`, `create_bot_and_dispatcher`, `main`), `conversation.py`, `file_handlers.py`, `utils.py` |
 | **database** | Инициализация и миграции БД     | `database.py` (`init_db`, `get_db`, `log_request`, `log_response`, `log_file`, `CREATE_USERS`, `CREATE_REQUESTS`, `CREATE_RESPONSES`, `CREATE_MODELS`, `CREATE_FILES`) |
 | **services** | Бизнес-логика пользователей и LLM | `services/user_service.py`, `services/llm_service.py`, `AuthMiddleware`, `ContextBuffer`, `admin_router` |
+| **file utils** | Проверка размера и MIME | `services/file_service.py` |
 | **providers** | Абстракции LLM-провайдеров | `providers/base.py`, `gemini.py`, `mistral.py`, `deepseek.py`, `registry.py` |
 | **scheduler** | Периодические задачи обновления моделей | `scheduler/jobs.py`, `scheduler/runner.py` |
 | **tests**    | Юнит- и E2E-тесты               | `tests/conftest.py`, `tests/test_start.py`, `tests/test_help.py`, `tests/test_smoke.py`                       |
@@ -92,6 +93,8 @@ User -> provider -> model
 ```
 * **Админ-команды:** через `admin_router` доступны `stats`, `users pending`, `models`, `refresh models`, `disable/enable <id>`.
 * **Обработка файлов:** `file_handlers.py` сохраняет присланные документы в `FILES_DIR` и передаёт их содержимое в LLM при поддержке модели.
+  `GeminiProvider` кодирует изображения и аудио в base64 и поддерживает PDF/текст
+  размером до 512 kB.
 
 > **Важно:** актуализируйте этот файл при расширении модели данных или изменении структуры проекта.
 
