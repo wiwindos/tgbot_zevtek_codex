@@ -39,15 +39,15 @@ async def test_list_models_aggregate(monkeypatch):
         fake_gemini,
     )
     monkeypatch.setenv("MISTRAL_API_KEY", "x")
-    monkeypatch.setenv("DIPSEEK_API_KEY", "y")
-    monkeypatch.setenv("DIPSEEK_ENDPOINT", "https://dipseek.ai")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "y")
+    monkeypatch.setenv("DEEPSEEK_ENDPOINT", "https://deepseek.ai")
 
     with respx.mock(assert_all_called=False) as router:
         router.get("https://api.mistral.ai/v1/models").respond(
             200, json={"data": [{"id": "mistral-8x7b"}]}
         )
-        router.get("https://dipseek.ai/v1/models").respond(
-            200, json={"models": ["dipseek-latest"]}
+        router.get("https://deepseek.ai/v1/models").respond(
+            200, json={"models": ["deepseek-latest"]}
         )
         registry = ProviderRegistry()
         models = await registry.list_all()
@@ -55,7 +55,7 @@ async def test_list_models_aggregate(monkeypatch):
     assert set(models) == {
         "gemini-pro",
         "mistral-8x7b",
-        "dipseek-latest",
+        "deepseek-latest",
     }
 
 

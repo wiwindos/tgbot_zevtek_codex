@@ -15,10 +15,10 @@ Below — расширение дорожной карты, продолжающ
 
 | Phase | Tasks |
 | ----- | ----- |
-| **T** | *`tests/docs/test_plan_state.py`* — проверка, что README содержит «Deepseek», а строк «dipseek» нет (фейл до правок). |
-| **F** | 1. Переименовать все «dipseek» → «deepseek» в коде, env-vars, миграции **(src, tests, docs)**.<br>2. Миграция БД: `UPDATE models SET provider='deepseek' WHERE provider='dipseek';`. |
+| **T** | *`tests/docs/test_plan_state.py`* — проверка, что README содержит «Deepseek», а строк «legacy provider» нет (фейл до правок). |
+| **F** | 1. Переименовать все «legacy provider» → «deepseek» в коде, env-vars, миграции **(src, tests, docs)**.<br>2. Миграция БД: `UPDATE models SET provider='deepseek' WHERE provider='legacy provider';`. |
 | **I** | - README, AGENTS.md, docs/admin\_commands.md — убрать старые упоминания прокси, обновить секцию провайдеров.<br>- Добавить changelog флаг **Breaking Change**. |
-| **P** | `refactor(core): rename dipseek→deepseek & sync docs` |
+| **P** | `refactor(core): rename legacy provider→deepseek & sync docs` |
 
 ---
 

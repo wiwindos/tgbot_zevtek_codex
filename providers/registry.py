@@ -4,7 +4,7 @@ import inspect
 from typing import Dict, Sequence, Type, cast
 
 from .base import BaseProvider
-from .dipseek import DipseekProvider  # noqa: F401
+from .deepseek import DeepseekProvider  # noqa: F401
 from .gemini import GeminiProvider  # noqa: F401
 from .mistral import MistralProvider  # noqa: F401
 

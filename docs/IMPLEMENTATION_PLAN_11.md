@@ -2,14 +2,14 @@
 
 > **Исходное состояние после Iter 10**
 >
-> * В коде и документации встречается устаревшее название **`dipseek`**:
+> * В коде и документации встречается устаревшее название **`legacy provider`**:
 >
->   * директория `providers/dipseek.py`, константы `DIPSEEK_API_KEY`, переменная окружения `DIPSEEK_ENDPOINT`, строки в БД `models.provider = 'dipseek'`, тест-фикстуры и markdown-файлы.
+>   * директория `providers/legacy provider.py`, константы `DEEPSEEK_API_KEY`, переменная окружения `DEEPSEEK_ENDPOINT`, строки в БД `models.provider = 'legacy provider'`, тест-фикстуры и markdown-файлы.
 > * README всё ещё содержит раздел «Proxy for Gemini», команда `/admin proxy …` удалить.
 > * Proxy-код для Gemini частично закомментирован, но модули `admin_proxy.py`, `provider.reload_settings()` и env-переменная `GEMINI_PROXY` присутствуют.
-> * Все CI-джобы зелёные, но grep-чек «dipseek» в репозитории возвращает >40 совпадений.
+> * Все CI-джобы зелёные, но grep-чек «legacy provider» в репозитории возвращает >40 совпадений.
 
-**Цель итерации — полностью устранить “dipseek”, переименовать в “deepseek”, вычистить устаревший proxy-функционал и синхронизировать документацию, оставив проект в рабочем состоянии (зелёные тесты, миграция данных).**
+**Цель итерации — полностью устранить “legacy provider”, переименовать в “deepseek”, вычистить устаревший proxy-функционал и синхронизировать документацию, оставив проект в рабочем состоянии (зелёные тесты, миграция данных).**
 
 ---
 
@@ -17,13 +17,13 @@
 
 1. **Новый тест-файл** `tests/docs/test_plan_state.py`.
 
-   * Фикс-чек: `Path.read_text().count("dipseek") == 0` для:
+   * Фикс-чек: `Path.read_text().count("legacy provider") == 0` для:
      `README.md`, `docs/**/*.md`, `GENERAL_IMPLEMENTATION_PLAN.md`.
-   * Аналогичный grep-чек кода: `glob("**/*.py")`, ожидание отсутствия строк `dipseek`.
-   * Проверка env-примеров: `.env.example` не содержит `DIPSEEK_` префиксов.
+   * Аналогичный grep-чек кода: `glob("**/*.py")`, ожидание отсутствия строк `legacy provider`.
+   * Проверка env-примеров: `.env.example` не содержит `DEEPSEEK_` префиксов.
 2. **Тест миграции БД** `tests/db/test_migration_deepseek.py`.
 
-   * Создать in-memory DB со старой записью `provider='dipseek'`.
+   * Создать in-memory DB со старой записью `provider='legacy provider'`.
    * Запуск мигратора (`scripts/migrate.py`) ⇒ запись переименована в `deepseek`.
 3. Пока оба теста падают.
 
@@ -33,22 +33,22 @@
 
 1. **Рефакторинг кода**
 
-   * Переименовать файл `providers/dipseek.py` → `providers/deepseek.py`; исправить импорты в `ProviderRegistry`.
-   * Внутри файла: класс `DipseekProvider` → `DeepseekProvider`; константы `DIPSEEK_*` → `DEEPSEEK_*`.
-   * Обновить все вызовы: `provider_name == "dipseek"` → `"deepseek"`.
+   * Переименовать файл `providers/legacy provider.py` → `providers/deepseek.py`; исправить импорты в `ProviderRegistry`.
+   * Внутри файла: класс `DeepseekProvider` → `DeepseekProvider`; константы `DEEPSEEK_*` → `DEEPSEEK_*`.
+   * Обновить все вызовы: `provider_name == "legacy provider"` → `"deepseek"`.
 2. **Env-переменные**
 
-   * `.env.example`: `DIPSEEK_API_KEY`, `DIPSEEK_ENDPOINT` → `DEEPSEEK_API_KEY`, `DEEPSEEK_ENDPOINT`.
-   * Добавить в `config.py` чтение новых переменных; оставить редирект-fallback `DIPSEEK_API_KEY`⚠️deprecated (warning в лог).
+   * `.env.example`: `DEEPSEEK_API_KEY`, `DEEPSEEK_ENDPOINT` → `DEEPSEEK_API_KEY`, `DEEPSEEK_ENDPOINT`.
+   * Добавить в `config.py` чтение новых переменных; оставить редирект-fallback `DEEPSEEK_API_KEY`⚠️deprecated (warning в лог).
 3. **Миграция БД**
 
    * Скрипт `scripts/migrate.py`:
 
      ```sql
      UPDATE models SET provider='deepseek'
-     WHERE provider='dipseek';
+     WHERE provider='legacy provider';
      ```
-   * При первом запуске бота миграция выполняется автоматически (если в таблице ещё есть `dipseek`).
+   * При первом запуске бота миграция выполняется автоматически (если в таблице ещё есть `legacy provider`).
 4. **Удаление proxy-функций**
 
    * Удалить `bot/admin_proxy.py`, а также любые подключения роутера в `main.py`.
@@ -57,7 +57,7 @@
    * Из `.env.example` удалить `GEMINI_PROXY`; в `config.py` убрать чтение.
 5. **Rename-script & helper**
 
-   * Создать скрипт `tools/check_legacy_refs.py` (исполнитель в CI) — grep “dipseek” и “GEMINI\_PROXY”; итогом 0/1.
+   * Создать скрипт `tools/check_legacy_refs.py` (исполнитель в CI) — grep “legacy provider” и “GEMINI\_PROXY”; итогом 0/1.
 
 ---
 
@@ -65,14 +65,14 @@
 
 1. **Документация**
 
-   * README: заменить все “dipseek” на “Deepseek”, убрать раздел **Proxy for Gemini**.
-   * `GENERAL_IMPLEMENTATION_PLAN.md` — внести запись «Iteration 11: dipseek→deepseek rename (breaking change)».
+   * README: заменить все “legacy provider” на “Deepseek”, убрать раздел **Proxy for Gemini**.
+   * `GENERAL_IMPLEMENTATION_PLAN.md` — внести запись «Iteration 11: legacy provider→deepseek rename (breaking change)».
    * `docs/admin_commands.md` — удалить подпункты proxy; добавить ремарку «трафик идёт через системный прокси (Docker)».
 2. **CHANGELOG**
 
    * Раздел **Changed**:
 
-     * «Renamed provider `dipseek` → `deepseek` (⚠️ breaking change)»
+     * «Renamed provider `legacy provider` → `deepseek` (⚠️ breaking change)»
      * «Removed built-in Gemini proxy commands; rely on container-level proxy».
 3. **Pre-commit / CI**
 
@@ -93,7 +93,7 @@
 
 ```bash
 git add .
-git commit -m "refactor(core): rename dipseek→deepseek and drop Gemini proxy"
+git commit -m "refactor(core): rename legacy provider→deepseek and drop Gemini proxy"
 git push origin main
 ```
 
@@ -104,7 +104,7 @@ git push origin main
 | Артефакт / Функция          | Статус после Iter 11                   |
 | --------------------------- | -------------------------------------- |
 | Провайдер `deepseek`        | переименован, класс `DeepseekProvider` |
-| Устаревшие строки «dipseek» | отсутствуют в коде и docs              |
+| Устаревшие строки «legacy provider» | отсутствуют в коде и docs              |
 | Proxy-код и команды         | удалены                                |
 | .env-пример                 | содержит только `DEEPSEEK_` переменные |
 | Миграция `models.provider`  | выполняется автоматически              |

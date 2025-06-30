@@ -60,4 +60,8 @@ repos:
         name: pip-check
         entry: pip check
         language: system
+      - id: legacy-refs
+        name: legacy-refs
+        entry: python tools/check_legacy_refs.py
+        language: system
 
