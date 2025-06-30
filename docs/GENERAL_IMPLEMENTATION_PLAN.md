@@ -1,124 +1,110 @@
-# GENERAL\_IMPLEMENTATION\_PLAN.md
+Below — расширение дорожной карты, продолжающее исходные 0-10 итерации.
+Формат и методология T-F-I-P те же, чтобы план «пришился» к уже существующему GENERAL\_IMPLEMENTATION\_PLAN.md.
 
-> **Methodology:** Each iteration follows a strict T‑F‑I‑P cycle — **T**est‑driven skeleton, **F**eature implementation, **I**ntegration (refactor + docs), **P**ush.  All code is committed with conventional‑commits style messages.  All tests use `pytest‑asyncio` with extensive fixtures and mocks.
+```markdown
+# GENERAL_IMPLEMENTATION_PLAN.md  ← v1.1 (дополнение)
 
----
-
-## Iteration 0 — Project Bootstrap & CI Skeleton
-
-| Phase              | Tasks                                                                                                                                                                                                                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T (Test first)** | *`tests/test_smoke.py`* — expect bot to launch and reply "Bot ready" to `/ping` (failing).                                                                                                                                                                                              |
-| **F (Feature)**    | 1. Create poetry project / update `requirements.txt`.<br>2. Add `bot/__init__.py` + minimalist `main.py` with `/ping` handler using **aiogram**.<br>3. Add `.env.example` & load via `python‑dotenv`.<br>4. Implement CLI `python -m bot --ping` returning 0.<br>5. Ensure test passes. |
-| **I (Integrate)**  | 1. Add pre‑commit (black, isort, flake8, mypy stubbed).<br>2. Configure **GitHub Actions** workflow: `lint`, `test`, `docker‑build` (dry‑run).                                                                                                                                          |
-| **P (Push)**       | `feat(core): bootstrap project with ping command`                                                                                                                                                                                                                                       |
+> **Methodology recap:** Every iteration keeps the T-F-I-P loop  
+> **T**est-driven-first → **F**eature code → **I**ntegration (refactor + docs) → **P**ush with conventional-commits.  
+> New tests rely on `pytest-asyncio`, `aiogram-testing`, `pytest-httpx`.  
+> Doc changes go to README, CONTEXT.md, docs/*.md **в одном и том же PR**.
 
 ---
 
-## Iteration 1 — Database Schema with **aiosqlite**
+## Iteration 11 — Documentation Sync & Deepseek Rename
 
-| Phase | Tasks                                                                                                                                              |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/db/test_schema.py`* — `init_db()` creates tables & foreign keys; inserting sample row succeeds.                                            |
-| **F** | 1. `db/models.sql` — idempotent DDL.<br>2. `db/__init__.py` with `init_db(path:str)`, `get_db()` (async context).<br>3. Script auto‑runs on start. |
-| **I** | Docstring diagrams using **erd‑antic** comment blocks.<br>Update README with schema table description.                                             |
-| **P** | `feat(db): initial aiosqlite schema and helpers`                                                                                                   |
-
----
-
-## Iteration 2 — Authorization Flow
-
-| Phase | Tasks                                                                                                                                                                             |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/bot/test_auth.py`* — unauthorized user receives request‑pending msg; admin approval flips `is_active`, subsequent message allowed. Mock TG API with `aiogram-testing`.    |
-| **F** | 1. Add middleware `AuthMiddleware` reading `users` table.<br>2. `/start` registers request, notifies admin group id from `.env`.<br>3. `/admin approve <user_id>` activates user. |
-| **I** | Factor out `services/user_service.py`.<br>Emoji‑based confirmation messages.                                                                                                      |
-| **P** | `feat(auth): interactive approval workflow inside bot`                                                                                                                            |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/docs/test_plan_state.py`* — проверка, что README содержит «Deepseek», а строк «dipseek» нет (фейл до правок). |
+| **F** | 1. Переименовать все «dipseek» → «deepseek» в коде, env-vars, миграции **(src, tests, docs)**.<br>2. Миграция БД: `UPDATE models SET provider='deepseek' WHERE provider='dipseek';`. |
+| **I** | - README, AGENTS.md, docs/admin\_commands.md — убрать старые упоминания прокси, обновить секцию провайдеров.<br>- Добавить changelog флаг **Breaking Change**. |
+| **P** | `refactor(core): rename dipseek→deepseek & sync docs` |
 
 ---
 
-## Iteration 3 — Context Buffer & Message Splitting
+## Iteration 12 — Provider Picker & Inline Model Selector
 
-| Phase | Tasks                                                                                                                                       |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/bot/test_context.py`* — after 3 conversational turns history length == 3; `/clear` empties context. Long (>4096) response is split. |
-| **F** | 1. Implement per‑chat circular buffer in `services/context.py` (configurable max\_tokens).<br>2. Utility `send_long_message()` chunker.     |
-| **I** | Add `/clear` command help.<br>Refactor tests.                                                                                               |
-| **P** | `feat(conversation): context retention & safe split`                                                                                        |
-
----
-
-## Iteration 4 — LLM Provider Abstraction (Gemini, Mistral, Dipseek)
-
-| Phase | Tasks                                                                                                                                                                                                                                      |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **T** | *`tests/providers/test_registry.py`* — registry returns provider, mocks call, stores request/response in DB.                                                                                                                               |
-| **F** | 1. `providers/base.py` proto‑class with `list_models()` & `generate()`.<br>2. `gemini.py` uses `google-cloud-aiplatform` async.<br>3. `mistral.py` httpx client.<br>4. `dipseek.py` httpx client.<br>5. `ProviderRegistry` auto‑discovers. |
-| **I** | Inject provider via inline‑keyboard; store chosen model in context.                                                                                                                                                                        |
-| **P** | `feat(llm): pluggable provider layer`                                                                                                                                                                                                      |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/bot/test_provider_switch.py`* —<br>1) `/providers` → выбрать Mistral; `/models` выводит только модели Mistral.<br>2) Переключение модели не меняет provider.<br>3) Возврат к старому provider восстанавливает раннюю модель. |
+| **F** | 1. Новый хэндлер `/providers` → inline-кнопки `provider_cb:<name>`.<br>2. `/models` фильтрует модели выбранного провайдера; callback `model_cb:<name>` сохраняет модель.<br>3. Расширить `ContextStorage`: `per_user_provider`, `per_user_model[provider]`.<br>4. Обновить Gemini/Mistral/Deepseek providers: `set_model()`.<br>5. Registry auto-inject выбранную модель в запрос. |
+| **I** | - HELP_TEXT распространяет новые команды.<br>- Добавить ER -диаграмму провайдер↔модель в CONTEXT.md. |
+| **P** | `feat(ui): /providers & inline model picker` |
 
 ---
 
-## Iteration 5 — Scheduler for Model Auto‑Refresh
+## Iteration 13 — Gemini Multimodal File Pipeline
 
-| Phase | Tasks                                                                                                                                                                     |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/scheduler/test_refresh.py`* — advance fake timer; models table updated; admin notified.                                                                           |
-| **F** | 1. Integrate **APScheduler** inside `scheduler/__init__.py`.<br>2. Daily job runs `pull_and_sync_models()` across providers.<br>3. Diff detection → `bot_notify_admin()`. |
-| **I** | Config param `REFRESH_CRON` in `.env`.                                                                                                                                    |
-| **P** | `feat(scheduler): daily model sync & notify`                                                                                                                              |
-
----
-
-## Iteration 6 — File Handling (if provider supports)
-
-| Phase | Tasks                                                                                                                                    |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/bot/test_file.py`* — upload PDF, provider stub returns summary. Response stored & file path logged.                              |
-| **F** | 1. `file_service.py` saves to `/data/files/` with uuid.<br>2. Detect file message, pass path/bytes to provider if `supports_files=True`. |
-| **I** | Update DB: add `files` table (request\_id, path, mime).                                                                                  |
-| **P** | `feat(files): accept & relay user files`                                                                                                 |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/bot/test_file_gemini.py`* —<br>a) Отправка PNG → модель отвечает «(image received)» (mock).<br>b) PDF > 512 kB → бот сообщает «файл слишком велик». |
+| **F** | 1. `file_service.detect_mime()` + size guard.<br>2. `GeminiProvider.generate()` — медиапарт из bytes → Base64 (или helper `genai.upload_multipart`).<br>3. Расширить `supports_files` флагами per-mime (image, audio, text). |
+| **I** | README → таблица поддерживаемых форматов.<br>docs/file_handling.md — примеры. |
+| **P** | `feat(gemini): multimodal image|audio support` |
 
 ---
 
-## Iteration 7 — Admin Command Suite Enhancement
+## Iteration 14 — Graceful Error Handling & Model Fallback
 
-| Phase | Tasks                                                                                                                 |
-| ----- | --------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/bot/test_admin_cmds.py`* — `/admin stats` returns counts; `/admin users pending` lists requests.              |
-| **F** | 1. Expand admin router: stats, list models, manual refresh, toggle user.<br>2. Password validation flow with timeout. |
-| **I** | Markdown doc `docs/admin_commands.md`.                                                                                |
-| **P** | `feat(admin): extended in‑bot management`                                                                             |
-
----
-
-## Iteration 8 — Observability & Error Handling
-
-| Phase | Tasks                                                                                                       |
-| ----- | ----------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/integration/test_errors.py`* — simulate provider 500; user gets graceful message; error logged.     |
-| **F** | 1. Add `structlog` JSON logger shipped to stdout.<br>2. Global exception middleware sending trace to admin. |
-| **I** | Configure GitHub Actions to save artifacts / coverage.                                                      |
-| **P** | `chore(obs): structured logging & Sentry hooks`                                                             |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/integration/test_fallback.py`* — мок провайдера бросает `httpx.TimeoutException`; бот отвечает «Модель недоступна, выберите /models». |
+| **F** | 1. Wrapper `safe_generate()` в `services/llm.py` с try/except.<br>2. Автоматическое предложение inline-кнопки «📋 /Models».<br>3. Global `ErrorMiddleware` → log JSON через structlog. |
+| **I** | Добавить Sentry DSN переменную в .env.example, описать включение. |
+| **P** | `feat(ux): graceful provider errors with hint` |
 
 ---
 
-## Iteration 9 — Docker, Compose & One‑Click Deploy
+## Iteration 15 — Context-Limit Notifier (>1000 chars)
 
-| Phase | Tasks                                                                                                                                               |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/deploy/test_image.py`* — docker image builds and `python main.py --ping` returns 0.                                                         |
-| **F** | 1. Write `Dockerfile` (python slim, non‑root).<br>2. `docker‑compose.yml` with named volume for `sqlite`.<br>3. Add CI stage to push image to GHCR. |
-| **I** | Update README deployment section.                                                                                                                   |
-| **P** | `ci(docker): automated image build & push`                                                                                                          |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/bot/test_context_limit.py`* — после достижения 1100 символов бот отправляет предупреждение, повторно не спамит до очистки. |
+| **F** | 1. В `context.py` хранить `warned`-флаг per chat.<br>2. Проверка сумм. len контекста после добавления нового сообщения.<br>3. Команда `/new` (alias `/clear`) — сброс флага. |
+| **I** | README: секция «Контекст и лимиты». |
+| **P** | `feat(ctx): auto-remind to /new when history>1000` |
 
 ---
 
-## Iteration 10 — Polish & Documentation Finish
+## Iteration 16 — Proxy Decommission & Config Cleanup
 
-| Phase | Tasks                                                                                                                                    |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **T** | *`tests/docs/test_readme_links.py`* — all docs internal links resolve (markdown‑link‑check).                                             |
-| **F** | 1. Complete `CONTEXT.md` with business goals.<br>2. Write change‑log, license, code‑of‑conduct.<br>3. Make `make lint` composite target. |
-| **I** | Final code formatting pass, bump version to 1.0.0.                                                                                       |
-| **P** | `docs: project ready for prime time 🎉`                                                                                                  |
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/config/test_no_proxy.py`* — `.env` без `GEMINI_PROXY`; бот стартует; команда `/admin proxy …` отсутствует в `/help`. |
+| **F** | 1. Удалить `admin_proxy.py`, env `GEMINI_PROXY`, колонки `proxy_url`.<br>2. Maven-style Alembic migration: drop column. |
+| **I** | Чистка README, docs/admin\_commands.md.<br>Секция «Docker proxy» (общесистемно). |
+| **P** | `refactor(cfg): remove gemini proxy support` |
+
+---
+
+## Iteration 17 — Command Suite Finalisation
+
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | *`tests/bot/test_commands.py`* — `/start`, `/help`, `/context`, `/new`, `/providers`, `/models` все отвечают и не превышают 4096 симв. |
+| **F** | 1. Дописать `/context` хэндлер (safe split).<br>2. `/start` расширить описанием возможностей.<br>3. `/help` обновить, удалить proxy-раздел. |
+| **I** | Зеркальное изменение English README (если есть). |
+| **P** | `feat(cmd): full public command palette` |
+
+---
+
+## Iteration 18 — Regression Suite & Coverage >85 %
+
+| Phase | Tasks |
+| ----- | ----- |
+| **T** | Развернуть `pytest-cov`; GH Action «coverage» fails <85 %. |
+| **F** | 1. Дописать missing path tests (edge cases).<br>2. Upload `coverage.xml` as artifact.<br>3. Badge in README. |
+| **I** | Настроить Codecov или GH-native coverage summary. |
+| **P** | `ci(test): enforce 85% coverage gate` |
+
+---
+
+### Release Tagging
+
+* После Iteration 18 — **tag v1.1.0**  
+* Changelog entries grouped under **Added**, **Changed**, **Removed**, **Fixed** — semver-strict.
+
+---
+
+*Документ дополняет предыдущие итерации 0-10 и закрывает все задачи, перечисленные в вашем последнем требовании.*
+```
