@@ -16,6 +16,7 @@ class ContextBuffer:
         self._data: Dict[int, Deque[Tuple[str, str]]] = {}
         self.user_provider: Dict[int, str] = {}
         self.user_models: Dict[int, Dict[str, str]] = {}
+        self.warned: Dict[int, bool] = {}
 
     def add(self, chat_id: int, role: str, text: str) -> None:
         queue = self._data.setdefault(chat_id, deque(maxlen=self.max_messages))
@@ -24,8 +25,12 @@ class ContextBuffer:
     def get(self, chat_id: int) -> List[Tuple[str, str]]:
         return list(self._data.get(chat_id, deque()))
 
+    def total_chars(self, chat_id: int) -> int:
+        return sum(len(t) for _, t in self._data.get(chat_id, []))
+
     def clear(self, chat_id: int) -> None:
         self._data.pop(chat_id, None)
+        self.warned.pop(chat_id, None)
 
     def set_provider(self, chat_id: int, provider: str) -> None:
         self.user_provider[chat_id] = provider

@@ -36,7 +36,7 @@ When a new user sends `/start`, the bot records the request and notifies the cha
 
 ## Context management & limits
 
-Messages for each chat are stored in an in-memory buffer. The number of stored pairs is controlled by `MAX_CONTEXT_MESSAGES` (default 20). Command `/clear` wipes the history for the chat. Answers longer than 4096 characters are automatically split before sending.
+Messages for each chat are stored in an in-memory buffer. The number of stored pairs is controlled by `MAX_CONTEXT_MESSAGES` (default 20). Command `/clear` (alias `/new`) wipes the history for the chat. When the conversation grows beyond 1000 characters the bot reminds you to clear it once. Answers longer than 4096 characters are automatically split before sending.
 
 ## Supported LLM providers
 

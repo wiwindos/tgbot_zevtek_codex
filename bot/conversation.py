@@ -1,3 +1,5 @@
+import os
+
 import structlog
 from aiogram import Router, types
 from aiogram.filters import Command
@@ -12,13 +14,16 @@ from services.llm_service import generate_reply, get_registry
 
 logger = structlog.get_logger()
 
+CONTEXT_WARN_THRESHOLD = int(os.getenv("CONTEXT_WARN_THRESHOLD", "1000"))
+
 
 def get_conversation_router(buffer: ContextBuffer) -> Router:
     router = Router()
 
-    @router.message(Command(commands=["clear"]))
+    @router.message(Command(commands=["clear", "new"]))
     async def clear_ctx(message: types.Message) -> None:
         buffer.clear(message.chat.id)
+        buffer.warned[message.chat.id] = False
         await send_long_message(
             message.bot,
             message.chat.id,
@@ -130,6 +135,18 @@ def get_conversation_router(buffer: ContextBuffer) -> Router:
     async def dialog(message: types.Message) -> None:
         if message.text is None or message.text.startswith("/"):
             return
+        total = buffer.total_chars(message.chat.id)
+        if total > CONTEXT_WARN_THRESHOLD and not buffer.warned.get(
+            message.chat.id, False
+        ):
+            await send_long_message(
+                message.bot,
+                message.chat.id,
+                f"ℹ️ У вас большой контекст ({total} симв.). "
+                "Рекомендуется очистить историю командой /new.",
+                log=False,
+            )
+            buffer.warned[message.chat.id] = True
         try:
             reply = await generate_reply(message.from_user.id, message.text)
         except ProviderError as err:
